@@ -2,6 +2,9 @@ import dotenv from 'dotenv'
 dotenv.config()
 var URL = process.env.Data_URL;
 
+// import {createRequire} from 'module';
+// var require = createRequire(import.meta.url);
+
 import {MongoClient} from 'mongodb'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
