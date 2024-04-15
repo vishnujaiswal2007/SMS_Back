@@ -27,10 +27,9 @@ class userController {
                 const check = await database.collection("users").findOne({
                     email: myobj.email
                 })
-                // console.log("I M in check")
+
                 if (check) {
-                    // await client.close();
-                    // console.log("Abhi yahan hai check mein");
+
                     res.status(201).send({
                         "status": "failed",
                         "message": "Existing user. Please check the Username"
@@ -42,9 +41,10 @@ class userController {
                             myobj.password = await bcrypt.hash(myobj.password, salt)
                             myobj.repass = await bcrypt.hash(myobj.repass, salt)
                             var result = await database.collection("users").insertOne(myobj);
-                            // await client.close();
+
                             var Insertid = JSON.stringify(result.insertedId)
                             var verify = JSON.stringify(result.acknowledged)
+
                             if (verify == "true") {
                                 res.status(200).send({
                                     "status": "sucess",
