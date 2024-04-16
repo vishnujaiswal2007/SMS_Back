@@ -79,6 +79,42 @@ class userController {
         }
     }
 
+    static login = async (req, res) => {
+        const client = new MongoClient(URL)
+        const database = client.db("SMS_login")
+        var myobj = req.body
+       
+        if (myobj.username === '' || myobj.password === '') {
+            res.status(200).send({
+                'status': 'sucess',
+                'message': 'Credentails should be filled properly'
+            })
+        } else {
+            var check = await database.collection('users').findOne({
+                email: myobj.username,
+            })
+          
+            var isMatch = await bcrypt.compare(myobj.password, check.password)
+           
+            if (check && isMatch) {
+                res.status(200).send({
+                    'status': 'sucess',
+                    'message': 'Swagat hai'
+                })
+            } else {
+                res.status(201).send({
+                    'status': 'failed',
+                    'message': 'Please check the credentials'
+                })
+            }
+        }
+
+
+
+        // res.status(200).send({'status':'sucess', 'message': myobj })
+
+    }
+
 }
 
 export default userController
