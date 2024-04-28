@@ -93,20 +93,33 @@ class userController {
             var check = await database.collection('users').findOne({
                 email: myobj.username,
             })
-          
-            var isMatch = await bcrypt.compare(myobj.password, check.password)
+
+            if (check){
+                var isMatch = await bcrypt.compare(myobj.password, check.password)
            
-            if (check && isMatch) {
-                res.status(200).send({
-                    'status': 'sucess',
-                    'message': 'Swagat hai'
-                })
-            } else {
+                if (check && isMatch) {
+                    //Generation of User token
+                    const token = jwt.sign({userID:check._id}, process.env.JWT_SECRET_KEY, {expiresIn:'1d'})
+                    res.status(200).send({
+                        'status': 'sucess',
+                        'message': 'Swagat hai',
+                        'token': token
+                    })
+                } else {
+                    res.status(201).send({
+                        'status': 'failed',
+                        'message': 'Please check the credentials'
+                    })
+                }
+                
+            }else{
                 res.status(201).send({
-                    'status': 'failed',
-                    'message': 'Please check the credentials'
+                    'status':'failed', 
+                    'message':'Please Sing UP'
                 })
             }
+          
+            
         }
 
 
