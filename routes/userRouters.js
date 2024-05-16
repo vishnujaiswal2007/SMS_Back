@@ -10,6 +10,7 @@ router.post('/registration', userController.userRegistration)
 router.post('/login', userController.login)
 
 //Private Routers
+router.post('/chngpas', userController.changepassword)
 
 
 export default router

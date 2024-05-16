@@ -100,11 +100,18 @@ class userController {
                 if (check && isMatch) {
                     //Generation of User token
                     const token = jwt.sign({userID:check._id}, process.env.JWT_SECRET_KEY, {expiresIn:'1d'})
+                    // res.cookie('jwt', token)
+                    // res.set('Authorization', 'Bearer '+ token);
                     res.status(200).send({
                         'status': 'sucess',
                         'message': 'Swagat hai',
                         'token': token
                     })
+
+                //    return res.status(200).json({token:token}).send({
+                //         'status': 'sucess',
+                //         'message': 'Swagat hai',
+                //     })
                 } else {
                     res.status(201).send({
                         'status': 'failed',
@@ -121,11 +128,16 @@ class userController {
           
             
         }
-
-
-
         // res.status(200).send({'status':'sucess', 'message': myobj })
+    }
 
+    static changepassword = async(req, res)=>{
+        var htok =req.headers
+        console.log("token is ", htok)
+        res.status(200).send({
+            'status':'sucess',
+            'message':'All is well',
+        })
     }
 
 }
