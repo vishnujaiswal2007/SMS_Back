@@ -83,7 +83,7 @@ class userController {
         const client = new MongoClient(URL)
         const database = client.db("SMS_login")
         var myobj = req.body
-       
+
         if (myobj.username === '' || myobj.password === '') {
             res.status(200).send({
                 'status': 'sucess',
@@ -94,12 +94,16 @@ class userController {
                 email: myobj.username,
             })
 
-            if (check){
+            if (check) {
                 var isMatch = await bcrypt.compare(myobj.password, check.password)
-           
+
                 if (check && isMatch) {
                     //Generation of User token
-                    const token = jwt.sign({userID:check._id}, process.env.JWT_SECRET_KEY, {expiresIn:'1d'})
+                    const token = jwt.sign({
+                        userID: check._id
+                    }, process.env.JWT_SECRET_KEY, {
+                        expiresIn: '1d'
+                    })
                     // res.cookie('jwt', token)
                     // res.set('Authorization', 'Bearer '+ token);
                     res.status(200).send({
@@ -108,36 +112,57 @@ class userController {
                         'token': token
                     })
 
-                //    return res.status(200).json({token:token}).send({
-                //         'status': 'sucess',
-                //         'message': 'Swagat hai',
-                //     })
+                    //    return res.status(200).json({token:token}).send({
+                    //         'status': 'sucess',
+                    //         'message': 'Swagat hai',
+                    //     })
                 } else {
                     res.status(201).send({
                         'status': 'failed',
                         'message': 'Please check the credentials'
                     })
                 }
-                
-            }else{
+
+            } else {
                 res.status(201).send({
-                    'status':'failed', 
-                    'message':'Please Sing UP'
+                    'status': 'failed',
+                    'message': 'Please Sing UP'
                 })
             }
-          
-            
+
+
         }
         // res.status(200).send({'status':'sucess', 'message': myobj })
     }
 
-    static changepassword = async(req, res)=>{
-        var htok =req.headers
+    static changepassword = async (req, res) => {
+        var htok = req.headers
         console.log("token is ", htok)
         res.status(200).send({
-            'status':'sucess',
-            'message':'All is well',
+            'status': 'sucess',
+            'message': 'All is well',
         })
+    }
+
+    static getdetails = async (req, res) => {
+        console.log(req.body);
+        res.status(200).send({
+            'status': 'sucess',
+            'message': 'details will get you soon'
+        })
+    }
+
+    static getcourse = async (req, res) => {
+            const client = new MongoClient(URL)
+            const database = client.db("COURSES")
+           var check = await database.collection('TRY').find({}).toArray(function(err,result){
+                if (err) throw err;
+                    return result
+            })
+            res.status(200).send({
+                'status':'sucess',
+                check})
+
     }
 
 }
