@@ -30,7 +30,7 @@ app.use(express.urlencoded({
 app.use('/', userRouters)
 
 //server creation and listening 
-const port=process.env.port
+const port=process.env.PORT
 
 var server = app.listen(port, ()=>{
     try {

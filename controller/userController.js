@@ -83,7 +83,6 @@ class userController {
         const client = new MongoClient(URL)
         const database = client.db("SMS_login")
         var myobj = req.body
-
         if (myobj.username === '' || myobj.password === '') {
             res.status(200).send({
                 'status': 'sucess',
