@@ -167,6 +167,21 @@ class userController {
       check,
     });
   };
+
+
+  static attendance = async (req, res) =>{
+    const client = new MongoClient(URL)
+    const database = client.db("SMS_login")
+    const alldata = await database.collection("attend").find({}).toArray(function(err, result){
+      if(err) throw err;
+      return result
+    })
+    console.log("Sara Data hai :", alldata)
+    res.status(200).send({
+      status:'sucess',
+      alldata
+    })
+  }
 }
 
 export default userController;
