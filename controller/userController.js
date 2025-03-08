@@ -136,8 +136,7 @@ class userController {
   };
 
   static changepassword = async (req, res) => {
-    var htok = req.headers;
-    console.log("token is ", htok);
+    // console.log(req.headers)
     res.status(200).send({
       status: "sucess",
       message: "All is well",
@@ -176,7 +175,7 @@ class userController {
       if(err) throw err;
       return result
     })
-    console.log("Sara Data hai :", alldata)
+    // console.log("Sara Data hai :", alldata)
     res.status(200).send({
       status:'sucess',
       alldata
