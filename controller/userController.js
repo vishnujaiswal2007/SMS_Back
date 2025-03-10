@@ -5,7 +5,7 @@ var URL = process.env.Data_URL;
 // import {createRequire} from 'module';
 // var require = createRequire(import.meta.url);
 
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
@@ -136,11 +136,37 @@ class userController {
   };
 
   static changepassword = async (req, res) => {
-    // console.log(req.headers)
-    res.status(200).send({
-      status: "sucess",
-      message: "All is well",
-    });
+    const myobj = req.body
+    if(myobj.oPass !== null){
+      var isMatch = await bcrypt.compare(myobj.oPass, req.user.password);
+      if(isMatch){
+        const salt = await bcrypt.genSalt(10)
+        const NewHashPassword = await bcrypt.hash(myobj.npass, salt)
+        const client = new MongoClient(URL)
+            await client.connect()
+            const database = client.db("SMS_login")
+            const collection = database.collection('users');
+        await collection.findOneAndUpdate({_id:new ObjectId(req.user._id)}, { $set : {password: NewHashPassword }})
+
+        res.status(200).send({
+          status: "sucess",
+          message: "Password is updated",
+        });
+      }else{
+
+      res.status(201).send({
+        status: "Failes",
+        message: "Existing password and current password does not match",
+      });
+    }
+
+    }else{
+      res.status(201).send({
+        status:'Failed',
+        message:"Old Password Should not be null"
+      })
+    }
+   
   };
 
   static getdetails = async (req, res) => {

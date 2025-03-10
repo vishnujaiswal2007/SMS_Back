@@ -1,9 +1,10 @@
 import express from 'express'
 const router = express.Router()
 import userController from '../controller/userController.js'
+import checkUserAuth from '../Middleware/user_auth.js'
 
 //Authentication
-
+router.use('/chngpas', checkUserAuth)
 
 //Public Roters
 router.post('/registration', userController.userRegistration)
