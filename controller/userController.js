@@ -8,6 +8,7 @@ var URL = process.env.Data_URL;
 import { MongoClient, ObjectId } from "mongodb";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import transporter from "../config/emailconfig.js";
 
 class userController {
   static userRegistration = async (req, res) => {
@@ -206,6 +207,88 @@ class userController {
       status:'sucess',
       alldata
     })
+  }
+
+
+  static resetpass = async (req, res) =>{
+    const myobj = req.body
+    if(myobj.email){
+      const client =new MongoClient(URL)
+      const database = client.db("SMS_login")
+      const data = await database.collection('users').findOne({email:myobj.email})
+    
+      if(data){
+        const secret = data._id + process.env.JWT_SECRET_KEY
+        const token =jwt.sign({userID:data._id}, secret,{expiresIn:'15m'})
+        const link = `http://192.168.1.55:3000/reset/${data._id}/${token}`
+        //Send Email
+        let info = await transporter.sendMail({
+          from:'vishnujaiswal.2007@gmail.com',
+          to:'vishnujaiswal.2007@gmail.com',
+          subject:'DACC, UoA: Password Reset Link',
+          html:`<a href=${link}>Click Here</a> to Reset your password`
+        })
+        res.send({
+          status:'sucess',
+          message:'Your password reset link has been send to your REGISTERED email. Thanks..'
+        })
+      }else{
+        res.send({
+          status:'Failed',
+          message:'Email is Unregistered'
+        })
+      }
+
+      client.close()
+
+    }else{
+      res.status(201).send({
+        status:'Failed',
+        message:'Enter a Valid Registered Email-Id..eg (xyz@example.com)'
+      })
+    }
+  }
+
+  static reset = async(req, res)=>{
+    // console.log("Params are", req.params)
+    // console.log("Body are", req.body)
+    const client=new MongoClient(URL)
+    const database = client.db("SMS_login")
+    const user = await database.collection("users").findOne({_id: new ObjectId(req.params.id)})
+    const secret = user._id + process.env.JWT_SECRET_KEY
+    try {
+      const myobj  = req.body
+      jwt.verify(req.params.token, secret)
+      if(myobj.npass && myobj.cnfpass){
+      if(myobj.npass === myobj.cnfpass){
+        const salt = await bcrypt.genSalt(10)
+        const newpass = await bcrypt.hash(myobj.npass, salt)
+        await database.collection('users').findOneAndUpdate({_id:new ObjectId(user._id)}, {$set:{password:newpass}})
+        res.send({
+          status:'Sucess',
+          message:'Your Password RESET Successfully'
+        })
+
+
+      }else{
+        res.send({
+          status:'Failed',
+          message:'New and Confirm Password should be same'
+        })   
+      }
+    }else{
+      res.send({
+        status:'Failed',
+        message:'All Fields are required'
+      })      
+    }
+    } catch (error) {
+      console.log(error)
+      res.send({
+        status:'Failed',
+        message:'Session Expired....'
+      })      
+    }
   }
 }
 
