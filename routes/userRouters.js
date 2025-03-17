@@ -14,6 +14,7 @@ router.post('/getcourse', userController.getcourse)
 router.post('/attend', userController.attendance)
 router.post('/resetpass', userController.resetpass)
 router.post(`/reset/:id/:token`, userController.reset)
+router.get(`/getcourse/:CR`, userController.getcourse)
 //Private Routers
 router.post('/chngpas', userController.changepassword)
 

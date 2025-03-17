@@ -290,6 +290,22 @@ class userController {
       })      
     }
   }
+
+static getcourse = async (req, res)=>{
+  const client = new MongoClient(URL)
+  const database = client.db('SMS_login')
+  const data = await database.collection('AU_COURSES').find({COURSE:req.params.CR}).toArray(function(err, result){
+    if(err) throw err
+    return result
+
+  })
+  res.send({
+    status:'sucess',
+    message:"UG Courses",
+    data
+  })
+}
+
 }
 
 export default userController;
