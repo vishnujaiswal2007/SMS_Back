@@ -178,19 +178,20 @@ class userController {
     });
   };
 
-  static getcourse = async (req, res) => {
+  static getsem = async (req, res) => {
     const client = new MongoClient(URL);
-    const database = client.db("COURSES");
-    var check = await database
-      .collection("TRY")
-      .find({})
+    const database = client.db("SMS_login");
+    var data = await database
+      .collection("AU_COURSES_DETAILS")
+      .find({PRG_CODE:req.body.PRG}, { projection: { sem:1} })
       .toArray(function (err, result) {
         if (err) throw err;
         return result;
       });
+      
     res.status(200).send({
       status: "sucess",
-      check,
+      data,
     });
   };
 
