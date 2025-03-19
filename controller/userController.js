@@ -307,6 +307,11 @@ static getcourse = async (req, res)=>{
   })
 }
 
+static getVerify = async (req, res)=>{
+  console.log(req.body)
+  console.log('Namaste')
+}
+
 }
 
 export default userController;

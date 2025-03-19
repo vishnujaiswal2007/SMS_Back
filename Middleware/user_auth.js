@@ -21,6 +21,7 @@ try {
 //Data With Password
 req.user = await collection.findOne({ _id:new ObjectId(userID)})
     next()
+    client.close()
 } catch (error) {
     console.log(error)
 }
