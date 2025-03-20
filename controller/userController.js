@@ -308,8 +308,49 @@ static getcourse = async (req, res)=>{
 }
 
 static getVerify = async (req, res)=>{
-  console.log(req.body)
-  console.log('Namaste')
+  const myobj = req.body
+  try {
+    if(myobj.PRG==='PRA262'){
+      if(myobj.sem==='I'){
+        const client = new MongoClient(URL)
+        const database = client.db('UG')
+        const qury={
+          YR:myobj.yr,
+          EN:myobj.enrol,
+          RN:myobj.rol,
+          GT:myobj.marks,
+          NM:myobj.cName,
+          GN:myobj.fName,
+          MN:myobj.mName,
+          PDF:'PDF'
+        }
+        const vdata = await database.collection('BA1').findOne(qury)
+        if(vdata ===null){
+          res.send({
+            status:'Failed',
+            message:'Please insert correct data'
+          })
+        }else{
+          res.status(200).send({
+            status:'Sucess',
+            message:'Data Verified',
+            vdata
+
+          })
+        }
+      }else{
+        console.log('record not found')
+        res.send({
+          status:'Failed',
+          message:'Record Not Found'
+        })
+      }
+    }
+    
+  } catch (error) {
+    console.log('The error from catch', error)
+  }
+  
 }
 
 }
