@@ -339,7 +339,7 @@ static getVerify = async (req, res)=>{
           })
         }
       }else{
-        console.log('record not found')
+        // console.log('record not found')
         res.send({
           status:'Failed',
           message:'Record Not Found'
