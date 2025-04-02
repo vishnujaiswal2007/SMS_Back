@@ -318,17 +318,17 @@ static getVerify = async (req, res)=>{
           YR:myobj.yr,
           EN:myobj.enrol,
           RN:myobj.rol,
-          GT:myobj.marks,
-          NM:myobj.cName,
-          GN:myobj.fName,
-          MN:myobj.mName,
+          GT:myobj.gt,
+          NM:myobj.cNm,
+          GN:myobj.fNm,
+          MN:myobj.mNm,
           PDF:'PDF'
         }
         const vdata = await database.collection('BA1').findOne(qury)
         if(vdata ===null){
           res.send({
             status:'Failed',
-            message:'Please insert correct data'
+            message:'Data not found'
           })
         }else{
           res.status(200).send({
