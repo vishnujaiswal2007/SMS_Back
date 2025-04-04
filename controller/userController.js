@@ -83,7 +83,7 @@ class userController {
     const client = new MongoClient(URL);
     const database = client.db("SMS_login");
     var myobj = req.body;
-    myobj.username = myobj.username.toLowerCase()
+    myobj.username = myobj.username.toLowerCase();
     if (myobj.username === "" || myobj.password === "") {
       res.status(200).send({
         status: "sucess",
@@ -137,37 +137,37 @@ class userController {
   };
 
   static changepassword = async (req, res) => {
-    const myobj = req.body
-    if(myobj.oPass !== null){
+    const myobj = req.body;
+    if (myobj.oPass !== null) {
       var isMatch = await bcrypt.compare(myobj.oPass, req.user.password);
-      if(isMatch){
-        const salt = await bcrypt.genSalt(10)
-        const NewHashPassword = await bcrypt.hash(myobj.npass, salt)
-        const client = new MongoClient(URL)
-            await client.connect()
-            const database = client.db("SMS_login")
-            const collection = database.collection('users');
-        await collection.findOneAndUpdate({_id:new ObjectId(req.user._id)}, { $set : {password: NewHashPassword }})
+      if (isMatch) {
+        const salt = await bcrypt.genSalt(10);
+        const NewHashPassword = await bcrypt.hash(myobj.npass, salt);
+        const client = new MongoClient(URL);
+        await client.connect();
+        const database = client.db("SMS_login");
+        const collection = database.collection("users");
+        await collection.findOneAndUpdate(
+          { _id: new ObjectId(req.user._id) },
+          { $set: { password: NewHashPassword } }
+        );
 
         res.status(200).send({
           status: "sucess",
           message: "Password is updated",
         });
-      }else{
-
+      } else {
+        res.status(201).send({
+          status: "Failes",
+          message: "Existing password and current password does not match",
+        });
+      }
+    } else {
       res.status(201).send({
-        status: "Failes",
-        message: "Existing password and current password does not match",
+        status: "Failed",
+        message: "Old Password Should not be null",
       });
     }
-
-    }else{
-      res.status(201).send({
-        status:'Failed',
-        message:"Old Password Should not be null"
-      })
-    }
-   
   };
 
   static getdetails = async (req, res) => {
@@ -183,176 +183,200 @@ class userController {
     const database = client.db("SMS_login");
     var data = await database
       .collection("AU_COURSES_DETAILS")
-      .find({PRG_CODE:req.body.PRG}, { projection: { sem:1} })
+      .find({ PRG_CODE: req.body.PRG }, { projection: { sem: 1 } })
       .toArray(function (err, result) {
         if (err) throw err;
         return result;
       });
-      
+
     res.status(200).send({
       status: "sucess",
       data,
     });
   };
 
-
-  static attendance = async (req, res) =>{
-    const client = new MongoClient(URL)
-    const database = client.db("SMS_login")
-    const alldata = await database.collection("attend").find({}).toArray(function(err, result){
-      if(err) throw err;
-      return result
-    })
+  static attendance = async (req, res) => {
+    const client = new MongoClient(URL);
+    const database = client.db("SMS_login");
+    const alldata = await database
+      .collection("attend")
+      .find({})
+      .toArray(function (err, result) {
+        if (err) throw err;
+        return result;
+      });
     // console.log("Sara Data hai :", alldata)
     res.status(200).send({
-      status:'sucess',
-      alldata
-    })
-  }
+      status: "sucess",
+      alldata,
+    });
+  };
 
+  static resetpass = async (req, res) => {
+    const myobj = req.body;
+    if (myobj.email) {
+      const client = new MongoClient(URL);
+      const database = client.db("SMS_login");
+      const data = await database
+        .collection("users")
+        .findOne({ email: myobj.email });
 
-  static resetpass = async (req, res) =>{
-    const myobj = req.body
-    if(myobj.email){
-      const client =new MongoClient(URL)
-      const database = client.db("SMS_login")
-      const data = await database.collection('users').findOne({email:myobj.email})
-    
-      if(data){
-        const secret = data._id + process.env.JWT_SECRET_KEY
-        const token =jwt.sign({userID:data._id}, secret,{expiresIn:'15m'})
-        const link = `http://192.168.1.55:3000/reset/${data._id}/${token}`
+      if (data) {
+        const secret = data._id + process.env.JWT_SECRET_KEY;
+        const token = jwt.sign({ userID: data._id }, secret, {
+          expiresIn: "15m",
+        });
+        const link = `http://192.168.1.55:3000/reset/${data._id}/${token}`;
         //Send Email
         let info = await transporter.sendMail({
-          from:'vishnujaiswal.2007@gmail.com',
-          to:'vishnujaiswal.2007@gmail.com',
-          subject:'DACC, UoA: Password Reset Link',
-          html:`<a href=${link}>Click Here</a> to Reset your password`
-        })
+          from: "vishnujaiswal.2007@gmail.com",
+          to: "vishnujaiswal.2007@gmail.com",
+          subject: "DACC, UoA: Password Reset Link",
+          html: `<a href=${link}>Click Here</a> to Reset your password`,
+        });
         res.send({
-          status:'sucess',
-          message:'Your password reset link has been send to your REGISTERED email. Thanks..'
-        })
-      }else{
+          status: "sucess",
+          message:
+            "Your password reset link has been send to your REGISTERED email. Thanks..",
+        });
+      } else {
         res.send({
-          status:'Failed',
-          message:'Email is Unregistered'
-        })
+          status: "Failed",
+          message: "Email is Unregistered",
+        });
       }
 
-      client.close()
-
-    }else{
+      client.close();
+    } else {
       res.status(201).send({
-        status:'Failed',
-        message:'Enter a Valid Registered Email-Id..eg (xyz@example.com)'
-      })
+        status: "Failed",
+        message: "Enter a Valid Registered Email-Id..eg (xyz@example.com)",
+      });
     }
-  }
+  };
 
-  static reset = async(req, res)=>{
+  static reset = async (req, res) => {
     // console.log("Params are", req.params)
     // console.log("Body are", req.body)
-    const client=new MongoClient(URL)
-    const database = client.db("SMS_login")
-    const user = await database.collection("users").findOne({_id: new ObjectId(req.params.id)})
-    const secret = user._id + process.env.JWT_SECRET_KEY
+    const client = new MongoClient(URL);
+    const database = client.db("SMS_login");
+    const user = await database
+      .collection("users")
+      .findOne({ _id: new ObjectId(req.params.id) });
+    const secret = user._id + process.env.JWT_SECRET_KEY;
     try {
-      const myobj  = req.body
-      jwt.verify(req.params.token, secret)
-      if(myobj.npass && myobj.cnfpass){
-      if(myobj.npass === myobj.cnfpass){
-        const salt = await bcrypt.genSalt(10)
-        const newpass = await bcrypt.hash(myobj.npass, salt)
-        await database.collection('users').findOneAndUpdate({_id:new ObjectId(user._id)}, {$set:{password:newpass}})
-        res.send({
-          status:'Sucess',
-          message:'Your Password RESET Successfully'
-        })
-
-
-      }else{
-        res.send({
-          status:'Failed',
-          message:'New and Confirm Password should be same'
-        })   
-      }
-    }else{
-      res.send({
-        status:'Failed',
-        message:'All Fields are required'
-      })      
-    }
-    } catch (error) {
-      console.log(error)
-      res.send({
-        status:'Failed',
-        message:'Session Expired....'
-      })      
-    }
-  }
-
-static getcourse = async (req, res)=>{
-  const client = new MongoClient(URL)
-  const database = client.db('SMS_login')
-  const data = await database.collection('AU_COURSES').find({COURSE:req.params.CR}).toArray(function(err, result){
-    if(err) throw err
-    return result
-
-  })
-  res.send({
-    status:'sucess',
-    message:"UG Courses",
-    data
-  })
-}
-
-static getVerify = async (req, res)=>{
-  const myobj = req.body
-  try {
-    if(myobj.PRG==='PRA262'){
-      if(myobj.sem==='I'){
-        const client = new MongoClient(URL)
-        const database = client.db('UG')
-        const qury={
-          YR:myobj.yr,
-          EN:myobj.enrol,
-          RN:myobj.rol,
-          GT:myobj.gt,
-          NM:myobj.cNm,
-          GN:myobj.fNm,
-          MN:myobj.mNm,
-          PDF:'PDF'
-        }
-        const vdata = await database.collection('BA1').findOne(qury)
-        if(vdata ===null){
+      const myobj = req.body;
+      jwt.verify(req.params.token, secret);
+      if (myobj.npass && myobj.cnfpass) {
+        if (myobj.npass === myobj.cnfpass) {
+          const salt = await bcrypt.genSalt(10);
+          const newpass = await bcrypt.hash(myobj.npass, salt);
+          await database
+            .collection("users")
+            .findOneAndUpdate(
+              { _id: new ObjectId(user._id) },
+              { $set: { password: newpass } }
+            );
           res.send({
-            status:'Failed',
-            message:'Data not found'
-          })
-        }else{
-          res.status(200).send({
-            status:'Sucess',
-            message:'Data Verified',
-            vdata
-
-          })
+            status: "Sucess",
+            message: "Your Password RESET Successfully",
+          });
+        } else {
+          res.send({
+            status: "Failed",
+            message: "New and Confirm Password should be same",
+          });
         }
-      }else{
-        // console.log('record not found')
+      } else {
         res.send({
-          status:'Failed',
-          message:'Record Not Found'
-        })
+          status: "Failed",
+          message: "All Fields are required",
+        });
       }
+    } catch (error) {
+      console.log(error);
+      res.send({
+        status: "Failed",
+        message: "Session Expired....",
+      });
     }
-    
-  } catch (error) {
-    console.log('The error from catch', error)
-  }
-  
-}
+  };
 
+  static getcourse = async (req, res) => {
+    const client = new MongoClient(URL);
+    const database = client.db("SMS_login");
+    const data = await database
+      .collection("AU_COURSES")
+      .find({ COURSE: req.params.CR })
+      .toArray(function (err, result) {
+        if (err) throw err;
+        return result;
+      });
+    res.send({
+      status: "sucess",
+      message: "UG Courses",
+      data,
+    });
+  };
+
+  static getVerify = async (req, res) => {
+    const myobj = req.body;
+    try {
+      if (myobj.PRG === "PRA262") {
+        if (myobj.sem === "I") {
+          const client = new MongoClient(URL);
+          const database = client.db("UG");
+          const qury = {
+            YR: myobj.yr,
+            EN: myobj.enrol,
+            RN: myobj.rol,
+            GT: myobj.gt,
+            NM: myobj.cNm,
+            GN: myobj.fNm,
+            MN: myobj.mNm,
+            PDF: "PDF",
+          };
+          const vdata = await database.collection("BA1").findOne(qury);
+          if (vdata === null) {
+            res.send({
+              status: "Failed",
+              message: "Data not found",
+            });
+          } else {
+            res.status(200).send({
+              status: "Sucess",
+              message: "Data Verified",
+              vdata,
+            });
+          }
+        } else {
+          // console.log('record not found')
+          res.send({
+            status: "Failed",
+            message: "Record Not Found",
+          });
+        }
+      }
+    } catch (error) {
+      console.log("The error from catch", error);
+    }
+  };
+
+  static getDesig = async (req, res) => {
+    const client = new MongoClient(URL);
+    const database = client.db("SMS_login");
+    const data = await database
+      .collection("Designation")
+      .find({ grp: req.body.grp })
+      .toArray(function (err, result) {
+        if (err) throw err;
+        return result;
+      });
+    res.status(200).send({
+      status: "Sucess",
+      data,
+    });
+  };
 }
 
 export default userController;
