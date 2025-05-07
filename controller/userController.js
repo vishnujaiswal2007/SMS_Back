@@ -180,10 +180,10 @@ class userController {
 
   static getsem = async (req, res) => {
     const client = new MongoClient(URL);
-    const database = client.db("SMS_login");
+    const database = client.db("COURSES");
     var data = await database
-      .collection("AU_COURSES_DETAILS")
-      .find({ PRG_CODE: req.body.PRG }, { projection: { sem: 1 } })
+      .collection("COURSE_DETAILS")
+      .find({ PRG_CODE: req.body.PRG }, { projection: { sem: 1, DB_CL:1} })
       .toArray(function (err, result) {
         if (err) throw err;
         return result;
@@ -304,9 +304,9 @@ class userController {
 
   static getcourse = async (req, res) => {
     const client = new MongoClient(URL);
-    const database = client.db("SMS_login");
+    const database = client.db("COURSES");
     const data = await database
-      .collection("AU_COURSES")
+      .collection("COURSES")
       .find({ COURSE: req.params.CR })
       .toArray(function (err, result) {
         if (err) throw err;
@@ -322,8 +322,6 @@ class userController {
   static getVerify = async (req, res) => {
     const myobj = req.body;
     try {
-      if (myobj.PRG === "PRA262") {
-        if (myobj.sem === "I") {
           const client = new MongoClient(URL);
           const database = client.db("UG");
           const qury = {
@@ -336,7 +334,7 @@ class userController {
             MN: myobj.mNm,
             PDF: "PDF",
           };
-          const vdata = await database.collection("BA1").findOne(qury);
+          const vdata = await database.collection(`${myobj.DB_CL}`).findOne(qury);
           if (vdata === null) {
             res.send({
               status: "Failed",
@@ -349,14 +347,6 @@ class userController {
               vdata,
             });
           }
-        } else {
-          // console.log('record not found')
-          res.send({
-            status: "Failed",
-            message: "Record Not Found",
-          });
-        }
-      }
     } catch (error) {
       console.log("The error from catch", error);
     }
