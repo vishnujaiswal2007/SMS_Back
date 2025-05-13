@@ -171,10 +171,20 @@ class userController {
   };
 
   static getdetails = async (req, res) => {
-    console.log(req.body);
+    const myobj = req.body
+    const client = new MongoClient(URL)
+    await client.connect();
+    const database = client.db(myobj.COURSE)
+    const query={
+      YR:myobj.yr,
+      RN:myobj.RN,
+      PDF:"PDF",
+    }
+   const data = await database.collection(myobj.DB_CL).findOne(query);
     res.status(200).send({
       status: "sucess",
       message: "details will get you soon",
+      data:data
     });
   };
 
@@ -183,7 +193,7 @@ class userController {
     const database = client.db("COURSES");
     var data = await database
       .collection("COURSE_DETAILS")
-      .find({ PRG_CODE: req.body.PRG }, { projection: { sem: 1, DB_CL:1} })
+      .find({ PRG_CODE: req.body.PRG }, { projection: { sem: 1, DB_CL:1, COURSE:1} })
       .toArray(function (err, result) {
         if (err) throw err;
         return result;
