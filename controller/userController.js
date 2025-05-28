@@ -177,7 +177,7 @@ class userController {
     const database = client.db(myobj.COURSE)
     const query={
       YR:myobj.yr,
-      RN:myobj.RN,
+      EN:myobj.EN,
       PDF:"PDF",
     }
    const data = await database.collection(myobj.DB_CL).findOne(query);
