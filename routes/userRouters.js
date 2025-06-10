@@ -7,6 +7,7 @@ import checkUserAuth from '../Middleware/user_auth.js'
 router.use('/chngpas', checkUserAuth)
 router.use('/getverify', checkUserAuth)
 router.use('/getdetails', checkUserAuth)
+router.use('/updateRecord', checkUserAuth)
 
 
 //Public Roters
@@ -23,6 +24,7 @@ router.post('/desig',userController.getDesig)
 router.post('/chngpas', userController.changepassword)
 router.post('/getverify', userController.getVerify)
 router.post('/getdetails', userController.getdetails)
+router.post('/updateRecord', userController.updateRecord)
 
 
 export default router

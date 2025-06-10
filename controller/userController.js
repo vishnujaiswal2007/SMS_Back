@@ -377,6 +377,52 @@ class userController {
       data,
     });
   };
+
+  static updateRecord = async (req, res)=>{
+
+    try {
+      // console.log("Data for Update", req.body.EN)
+      const CC = req.body.CC;
+      const lastPart = CC.split(" ").pop(); // => "I"
+      const romanToInt = (roman) => {
+        const map = { I: 1, II: 2, III: 3 };
+        return map[roman] || null;
+      };
+      // console.log(romanToInt(lastPart)); // Output: I
+      const client = new MongoClient(URL);
+      const database = client.db("COURSES")
+      const program = await database.collection("COURSES").findOne({PRG_CODE:req.body.PRG_CODE})
+      const PRG = program.DB_CL+romanToInt(lastPart)
+      
+      const database1 = client.db(program.COURSE)
+      const candidate = database1.collection(PRG)
+      await candidate.updateOne(
+        { EN: req.body.EN, PDF: "PDF" },
+        { $set: { PDF: "---" } }
+      );
+      // new data without _id
+const dataToInsert = { ...req.body };
+delete dataToInsert._id;
+
+// Insert the new data as a new document
+await candidate.insertOne(dataToInsert);
+      // console.log("The Candidate is ", candidate)
+
+    res.status(200).send({
+      status:"Sucess",
+      message:"All is well"
+    })
+      
+    } catch (error) {
+      console.log("Data for Update Error", error)
+      res.status(400).send({
+        status:"Failes",
+        message:"Their is some PRB"
+      })
+    }
+    
+
+  }
 }
 
 export default userController;
