@@ -9,6 +9,9 @@ import { MongoClient, ObjectId } from "mongodb";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import transporter from "../config/emailconfig.js";
+import fs from 'fs';
+import * as XLSX from 'xlsx'
+
 
 class userController {
   static userRegistration = async (req, res) => {
@@ -317,7 +320,7 @@ class userController {
     const database = client.db("COURSES");
     const data = await database
       .collection("COURSES")
-      .find({ COURSE: req.params.CR })
+      .find({ COURSE: req.params.CR, TYPE:req.params.type })
       .toArray(function (err, result) {
         if (err) throw err;
         return result;
@@ -421,6 +424,27 @@ await candidate.insertOne(dataToInsert);
       })
     }
     
+
+  }
+
+  static CbcsUgProfile = async  (req, res) => {
+    try {
+      
+      console.log("File size (bytes):", req.file);
+
+      res.status(200).send({
+        status:"Sucess",
+        message:"All is well"
+      })
+      
+    } catch (error) {
+      res.status(400).send({
+        status:"Failes",
+        message:"Their is some PRB"
+      })
+      
+    }
+   
 
   }
 }
