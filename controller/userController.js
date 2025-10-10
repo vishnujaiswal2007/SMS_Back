@@ -396,7 +396,6 @@ class userController {
       const database = client.db("COURSES")
       const program = await database.collection("COURSES").findOne({PRG_CODE:req.body.PRG_CODE})
       const PRG = program.DB_CL+romanToInt(lastPart)
-      
       const database1 = client.db(program.COURSE)
       const candidate = database1.collection(PRG)
       await candidate.updateOne(
@@ -408,19 +407,27 @@ const dataToInsert = { ...req.body };
 delete dataToInsert._id;
 
 // Insert the new data as a new document
-await candidate.insertOne(dataToInsert);
-      // console.log("The Candidate is ", candidate)
+ const ack = await candidate.insertOne(dataToInsert);
+      // console.log("The Acknowledge is ", ack)
+
+      if(ack.acknowledged=== true){
 
     res.status(200).send({
       status:"Sucess",
-      message:"All is well"
+      message:"Profile Updated Succesfully"
     })
+  }else{
+    res.status(400).send({
+      status:"Failed",
+      message:"Unable to update profile"
+    })
+  }
       
     } catch (error) {
       console.log("Data for Update Error", error)
       res.status(400).send({
         status:"Failes",
-        message:"Their is some PRB"
+        message:"Contact System Manager"
       })
     }
     
