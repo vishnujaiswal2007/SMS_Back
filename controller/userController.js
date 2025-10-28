@@ -9,14 +9,13 @@ import { MongoClient, ObjectId } from "mongodb";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import transporter from "../config/emailconfig.js";
-import fs from 'fs';
-import * as XLSX from 'xlsx'
-
+import fs from "fs";
+import * as XLSX from "xlsx";
+import { url } from "inspector";
 
 class userController {
   static userRegistration = async (req, res) => {
     var myobj = req.body;
-
     // Create a new client and connect to MongoDB
     const client = new MongoClient(URL);
     run();
@@ -31,21 +30,25 @@ class userController {
         if (check) {
           res.status(201).send({
             status: "failed",
-            message: "Existing user. Please check the Username",
+            message: "Existing user! This email is already registered",
           });
         } else {
           if (
-            myobj.f_name &&
-            myobj.l_name &&
+            myobj.fname &&
+            myobj.lname &&
             myobj.email &&
             myobj.password &&
-            myobj.repass
+            myobj.repassword
           ) {
-            if (myobj.password === myobj.repass) {
+            if (myobj.password === myobj.repassword) {
               const salt = await bcrypt.genSalt(10);
               myobj.password = await bcrypt.hash(myobj.password, salt);
-              myobj.repass = await bcrypt.hash(myobj.repass, salt);
-              var result = await database.collection("users").insertOne(myobj);
+              myobj.repassword = await bcrypt.hash(myobj.repassword, salt);
+
+              const { repassword, ...rest } = myobj;
+              const remain = { ...rest };
+
+              var result = await database.collection("users").insertOne(remain);
 
               var Insertid = JSON.stringify(result.insertedId);
               var verify = JSON.stringify(result.acknowledged);
@@ -54,7 +57,7 @@ class userController {
                 res.status(200).send({
                   status: "sucess",
                   message:
-                    "Data Saved Sucessfully: Your account will active shortly",
+                    "Data Saved Sucessfully: Your email is your User Name",
                 });
               } else {
                 res.status(201).send({
@@ -174,20 +177,20 @@ class userController {
   };
 
   static getdetails = async (req, res) => {
-    const myobj = req.body
-    const client = new MongoClient(URL)
+    const myobj = req.body;
+    const client = new MongoClient(URL);
     await client.connect();
-    const database = client.db(myobj.COURSE)
-    const query={
-      YR:myobj.yr,
-      EN:myobj.EN,
-      PDF:"PDF",
-    }
-   const data = await database.collection(myobj.DB_CL).findOne(query);
+    const database = client.db(myobj.COURSE);
+    const query = {
+      YR: myobj.yr,
+      EN: myobj.EN,
+      PDF: "PDF",
+    };
+    const data = await database.collection(myobj.DB_CL).findOne(query);
     res.status(200).send({
       status: "sucess",
       message: "details will get you soon",
-      data:data
+      data: data,
     });
   };
 
@@ -196,7 +199,10 @@ class userController {
     const database = client.db("COURSES");
     var data = await database
       .collection("COURSE_DETAILS")
-      .find({ PRG_CODE: req.body.PRG }, { projection: { sem: 1, DB_CL:1, COURSE:1} })
+      .find(
+        { PRG_CODE: req.body.PRG },
+        { projection: { sem: 1, DB_CL: 1, COURSE: 1 } }
+      )
       .toArray(function (err, result) {
         if (err) throw err;
         return result;
@@ -239,7 +245,7 @@ class userController {
         const token = jwt.sign({ userID: data._id }, secret, {
           expiresIn: "15m",
         });
-        const link = `http://192.168.1.55:3000/reset/${data._id}/${token}`;
+        const link = `http://192.168.1.55:4000/reset/${data._id}/${token}`;
         //Send Email
         let info = await transporter.sendMail({
           from: "vishnujaiswal.2007@gmail.com",
@@ -320,7 +326,7 @@ class userController {
     const database = client.db("COURSES");
     const data = await database
       .collection("COURSES")
-      .find({ COURSE: req.params.CR, TYPE:req.params.type })
+      .find({ COURSE: req.params.CR, TYPE: req.params.type })
       .toArray(function (err, result) {
         if (err) throw err;
         return result;
@@ -335,31 +341,31 @@ class userController {
   static getVerify = async (req, res) => {
     const myobj = req.body;
     try {
-          const client = new MongoClient(URL);
-          const database = client.db("UG");
-          const qury = {
-            YR: myobj.yr,
-            EN: myobj.enrol,
-            RN: myobj.rol,
-            GT: myobj.gt,
-            NM: myobj.cNm,
-            GN: myobj.fNm,
-            MN: myobj.mNm,
-            PDF: "PDF",
-          };
-          const vdata = await database.collection(`${myobj.DB_CL}`).findOne(qury);
-          if (vdata === null) {
-            res.send({
-              status: "Failed",
-              message: "Data not found",
-            });
-          } else {
-            res.status(200).send({
-              status: "Sucess",
-              message: "Data Verified",
-              vdata,
-            });
-          }
+      const client = new MongoClient(URL);
+      const database = client.db("UG");
+      const qury = {
+        YR: myobj.yr,
+        EN: myobj.enrol,
+        RN: myobj.rol,
+        GT: myobj.gt,
+        NM: myobj.cNm,
+        GN: myobj.fNm,
+        MN: myobj.mNm,
+        PDF: "PDF",
+      };
+      const vdata = await database.collection(`${myobj.DB_CL}`).findOne(qury);
+      if (vdata === null) {
+        res.send({
+          status: "Failed",
+          message: "Data not found",
+        });
+      } else {
+        res.status(200).send({
+          status: "Sucess",
+          message: "Data Verified",
+          vdata,
+        });
+      }
     } catch (error) {
       console.log("The error from catch", error);
     }
@@ -381,8 +387,7 @@ class userController {
     });
   };
 
-  static updateRecord = async (req, res)=>{
-
+  static updateRecord = async (req, res) => {
     try {
       // console.log("Data for Update", req.body.EN)
       const CC = req.body.CC;
@@ -393,67 +398,151 @@ class userController {
       };
       // console.log(romanToInt(lastPart)); // Output: I
       const client = new MongoClient(URL);
-      const database = client.db("COURSES")
-      const program = await database.collection("COURSES").findOne({PRG_CODE:req.body.PRG_CODE})
-      const PRG = program.DB_CL+romanToInt(lastPart)
-      const database1 = client.db(program.COURSE)
-      const candidate = database1.collection(PRG)
+      const database = client.db("COURSES");
+      const program = await database
+        .collection("COURSES")
+        .findOne({ PRG_CODE: req.body.PRG_CODE });
+      const PRG = program.DB_CL + romanToInt(lastPart);
+      const database1 = client.db(program.COURSE);
+      const candidate = database1.collection(PRG);
       await candidate.updateOne(
         { EN: req.body.EN, PDF: "PDF" },
         { $set: { PDF: "---" } }
       );
       // new data without _id
-const dataToInsert = { ...req.body };
-delete dataToInsert._id;
+      const dataToInsert = { ...req.body };
+      delete dataToInsert._id;
 
-// Insert the new data as a new document
- const ack = await candidate.insertOne(dataToInsert);
+      // Insert the new data as a new document
+      const ack = await candidate.insertOne(dataToInsert);
       // console.log("The Acknowledge is ", ack)
 
-      if(ack.acknowledged=== true){
-
-    res.status(200).send({
-      status:"Sucess",
-      message:"Profile Updated Succesfully"
-    })
-  }else{
-    res.status(400).send({
-      status:"Failed",
-      message:"Unable to update profile"
-    })
-  }
-      
+      if (ack.acknowledged === true) {
+        res.status(200).send({
+          status: "Sucess",
+          message: "Profile Updated Succesfully",
+        });
+      } else {
+        res.status(400).send({
+          status: "Failed",
+          message: "Unable to update profile",
+        });
+      }
     } catch (error) {
-      console.log("Data for Update Error", error)
+      console.log("Data for Update Error", error);
       res.status(400).send({
-        status:"Failes",
-        message:"Contact System Manager"
-      })
+        status: "Failes",
+        message: "Contact System Manager",
+      });
     }
-    
+  };
 
-  }
-
-  static CbcsUgProfile = async  (req, res) => {
+  static CbcsUgProfile = async (req, res) => {
     try {
-      
       console.log("File size (bytes):", req.file);
 
       res.status(200).send({
-        status:"Sucess",
-        message:"All is well"
-      })
-      
+        status: "Sucess",
+        message: "All is well",
+      });
     } catch (error) {
       res.status(400).send({
-        status:"Failes",
-        message:"Their is some PRB"
-      })
-      
+        status: "Failes",
+        message: "Their is some PRB",
+      });
     }
-   
+  };
 
-  }
+  static GenerateRollNumber = async (req, res) => {
+    try {
+      // getting year
+      const date = new Date();
+      const year = date.getFullYear().toString().slice(-2);
+
+      // getting Course Code and Unit
+      const client = new MongoClient(URL);
+      const database = client.db("CODE");
+      const courseCode = await database
+        .collection("PRGCODE")
+        .findOne({ CPRG: req.body.PRG });
+      const unit = await database
+        .collection("UNITCODE")
+        .findOne({ Unit_Name: req.body.unit });
+      await client.close();
+
+      // semester
+      const semester = JSON.parse(req.body.sem);
+
+      const romanToNumber = {
+        I: 1,
+        II: 2,
+        III: 3,
+        IV: 4,
+        V: 5,
+        VI: 6,
+        VII: 7,
+        VIII: 8,
+        IX: 9,
+        X: 'X',
+      };
+      const roman = [semester.sem];
+      const result = roman.map((r) => romanToNumber[r]);
+
+      // Roll Number Prefix
+      const PreRN = year + unit.NEP_CODE + courseCode.PRG_CODE + result[0];
+
+
+      //get starting number 
+      database = client.db("ROLL_LIMIT")
+      // const sRN = database.collection()
+
+      // console.log("Unit Data ", unit)
+      // console.log("Course Code", courseCode)
+      // console.log("Request body", req.body)
+
+      // const fileBuffer = req.file.buffer
+      // const workbook = XLSX.read(fileBuffer, {type: "buffer"})
+      // const sheetName = workbook.SheetNames[0]
+      // const sheet = workbook.Sheets[sheetName]
+      // const data = XLSX.utils.sheet_to_json(sheet);
+
+      // console.log("Excel data loaded:", data.length, "rows");
+
+      res.status(200).send({
+        status: "Sucess",
+        message: "All is well",
+      });
+    } catch (error) {
+      res.status(400).send({
+        status: "Failes",
+        message: "Their is some PRB",
+      });
+    }
+  };
+
+  static getUnit = async (req, res) => {
+    const client = new MongoClient(URL);
+
+    try {
+      await client.connect();
+      const database = client.db("CODE");
+      const data = await database.collection("UNITCODE").find().toArray();
+
+      res.send({
+        status: "success",
+        message: "UG Courses",
+        data: data,
+      });
+    } catch (error) {
+      console.error("Error fetching UNITCODE:", error);
+      res.status(500).send({
+        status: "error",
+        message: "Failed to fetch data",
+      });
+    } finally {
+      await client.close();
+    }
+  };
 }
 
 export default userController;

@@ -14,6 +14,7 @@ router.use('/getverify', checkUserAuth)
 router.use('/getdetails', checkUserAuth)
 router.use('/updateRecord', checkUserAuth)
 router.use('CbcsUgProfile', checkUserAuth)
+router.use('/GenerateRollNumber', checkUserAuth)
 
 
 //Public Roters
@@ -26,6 +27,7 @@ router.post('/resetpass', userController.resetpass)
 router.post(`/reset/:id/:token`, userController.reset)
 router.get(`/getcourse/:CR/:type`, userController.getcourse)
 router.post('/desig',userController.getDesig)
+router.get(`/getUnit`, userController.getUnit)
 
 //Private Routers
 router.post('/chngpas', userController.changepassword)
@@ -33,6 +35,7 @@ router.post('/getverify', userController.getVerify)
 router.post('/getdetails', userController.getdetails)
 router.post('/updateRecord', userController.updateRecord)
 router.post('/CbcsUgProfile', upload.single("file"), userController.CbcsUgProfile)
+router.post('/GenerateRollNumber', upload.single("file"), userController.GenerateRollNumber)
 
 
 export default router
