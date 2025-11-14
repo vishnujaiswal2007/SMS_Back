@@ -14,7 +14,7 @@ router.use('/getverify', checkUserAuth)
 router.use('/getdetails', checkUserAuth)
 router.use('/updateRecord', checkUserAuth)
 router.use('CbcsUgProfile', checkUserAuth)
-router.use('/GenerateRollNumber', checkUserAuth)
+router.use('/AdmissionNepUG', checkUserAuth)
 
 
 //Public Roters
@@ -35,7 +35,7 @@ router.post('/getverify', userController.getVerify)
 router.post('/getdetails', userController.getdetails)
 router.post('/updateRecord', userController.updateRecord)
 router.post('/CbcsUgProfile', upload.single("file"), userController.CbcsUgProfile)
-router.post('/GenerateRollNumber', upload.single("file"), userController.GenerateRollNumber)
+router.post('/AdmissionNepUG', upload.single("file"), userController.AdmissionNepUG)
 
 
 export default router

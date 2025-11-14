@@ -177,6 +177,7 @@ class userController {
   };
 
   static getdetails = async (req, res) => {
+    
     const myobj = req.body;
     const client = new MongoClient(URL);
     await client.connect();
@@ -453,7 +454,7 @@ class userController {
     }
   };
 
-  static GenerateRollNumber = async (req, res) => {
+  static GenerateRollNumberNEP = async (req, res) => {
     try {
       // getting year
       const date = new Date();
@@ -519,6 +520,43 @@ class userController {
       });
     }
   };
+
+
+  static AdmissionNepUG = async (req, res) => {
+    try {
+      // getting year
+      const date = new Date();
+      const year = date.getFullYear().toString().slice(-2);
+      const type=req.body.type
+      const PRG_CODE=req.body.PRG
+     
+      console.log("Request body", type, PRG_CODE)
+
+      const fileBuffer = req.file.buffer
+      const workbook = XLSX.read(fileBuffer, {type: "buffer"})
+      const sheetName = workbook.SheetNames[0]
+      const sheet = workbook.Sheets[sheetName]
+      const data = XLSX.utils.sheet_to_json(sheet);
+      const dataInsert = data.map((row, index)=>{
+        return index
+      })  
+      
+     console.log("Data ", dataInsert)
+
+      res.status(200).send({
+        status: "Sucess",
+        message: `File containing: ${data.length} candidates`,
+      });
+    } catch (error) {
+      res.status(400).send({
+        status: "Failes",
+        message: "Their is some PRB",
+      });
+    }
+  };
+
+
+
 
   static getUnit = async (req, res) => {
     const client = new MongoClient(URL);

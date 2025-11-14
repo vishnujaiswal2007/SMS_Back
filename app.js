@@ -32,11 +32,11 @@ app.use('/', userRouters)
 //server creation and listening 
 const port=process.env.PORT
 
-var server = app.listen(port, ()=>{
+var server = app.listen(port, "0.0.0.0", ()=>{
     try {
         var host = server.address().address
         var port = server.address().port
-        console.log("Server is ON at http:localhost//%s:%s", host, port);
+        console.log("Server is ON ", host, port);
     } catch (error) {
         console.log("Server Not connected and error is ", error);
     }
