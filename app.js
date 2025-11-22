@@ -5,7 +5,11 @@ var app = express()
 import userRouters from './routes/userRouters.js'
 import cors from 'cors'
 
-app.use(cors())
+app.use(
+    cors({
+      exposedHeaders: ["x-message"]
+    })
+  );
 
 // app.use(function (req, res, next) {
 //     res.setHeader('Access-Control-Allow-Origin', 'http://127.0.0.1:5505');

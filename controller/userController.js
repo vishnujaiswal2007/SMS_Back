@@ -5,7 +5,7 @@ var URL = process.env.Data_URL;
 // import {createRequire} from 'module';
 // var require = createRequire(import.meta.url);
 
-import { MongoClient, ObjectId } from "mongodb";
+import { Int32, MongoClient, ObjectId } from "mongodb";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import transporter from "../config/emailconfig.js";
@@ -177,7 +177,6 @@ class userController {
   };
 
   static getdetails = async (req, res) => {
-    
     const myobj = req.body;
     const client = new MongoClient(URL);
     await client.connect();
@@ -484,7 +483,7 @@ class userController {
         VII: 7,
         VIII: 8,
         IX: 9,
-        X: 'X',
+        X: "X",
       };
       const roman = [semester.sem];
       const result = roman.map((r) => romanToNumber[r]);
@@ -492,9 +491,8 @@ class userController {
       // Roll Number Prefix
       const PreRN = year + unit.NEP_CODE + courseCode.PRG_CODE + result[0];
 
-
-      //get starting number 
-      database = client.db("ROLL_LIMIT")
+      //get starting number
+      database = client.db("ROLL_LIMIT");
       // const sRN = database.collection()
 
       // console.log("Unit Data ", unit)
@@ -521,42 +519,230 @@ class userController {
     }
   };
 
-
   static AdmissionNepUG = async (req, res) => {
+    let client;
+
     try {
-      // getting year
+      client = new MongoClient(URL);
+      await client.connect();
+
+      // -----------------------------
+      // BASIC DATE INFO
+      // -----------------------------
       const date = new Date();
-      const year = date.getFullYear().toString().slice(-2);
-      const type=req.body.type
-      const PRG_CODE=req.body.PRG
-     
-      console.log("Request body", type, PRG_CODE)
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+      const formattedDate = `${day}/${month}/${year}`;
+      const lastOfYear = String(year).slice(2);
 
-      const fileBuffer = req.file.buffer
-      const workbook = XLSX.read(fileBuffer, {type: "buffer"})
-      const sheetName = workbook.SheetNames[0]
-      const sheet = workbook.Sheets[sheetName]
+      const PRG_CODE = req.body.PRG;
+
+      // -----------------------------
+      // HELPER FUNCTION – GENERATE NEXT CE
+      // -----------------------------
+      function generateNextCE(currentCE) {
+        const yearPart = currentCE.slice(2, 4);
+        let numberPart = parseInt(currentCE.slice(4));
+        numberPart++;
+        return `CE${yearPart}${String(numberPart).padStart(6, "0")}`;
+      }
+
+      // -----------------------------
+      // FETCH LAST CE SAFELY
+      // -----------------------------
+      const CeDB = client.db("CENUMBER");
+      const lastRow = await CeDB.collection(`CE${lastOfYear}`)
+        .find({})
+        .sort({ _id: -1 })
+        .limit(1)
+        .toArray();
+
+      let currentCE;
+
+      if (lastRow.length > 0) {
+        let lastCE = String(lastRow[0]._id).trim();
+
+        const validCEPattern = /^CE\d{8}$/;
+
+        if (validCEPattern.test(lastCE)) {
+          let nextNum = parseInt(lastCE.slice(4)) + 1;
+          currentCE = `CE${lastOfYear}${String(nextNum).padStart(6, "0")}`;
+        } else {
+          console.log("INVALID CE FOUND IN DB:", lastCE);
+          console.log("Resetting and starting fresh.");
+          currentCE = `CE${lastOfYear}000001`;
+        }
+      } else {
+        currentCE = `CE${lastOfYear}000001`;
+      }
+
+      // -----------------------------
+      // READ EXCEL
+      // -----------------------------
+      const fileBuffer = req.file.buffer;
+      const workbook = XLSX.read(fileBuffer, { type: "buffer" });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
       const data = XLSX.utils.sheet_to_json(sheet);
-      const dataInsert = data.map((row, index)=>{
-        return index
-      })  
-      
-     console.log("Data ", dataInsert)
 
+      let wrongRows = [];
+      let recordsToInsert = [];
+
+      // -----------------------------
+      // PROCESS EACH ROW
+      // -----------------------------
+      let program
+      for (const row of data) {
+        const CoursesDB = client.db("COURSES");
+        const CodeDB = client.db("CODE");
+
+        program = await CoursesDB.collection("COURSES").findOne({
+          CourseNameCode: row.cc,
+          TYPE: "NEP",
+        });
+
+             
+        // WRONG PROGRAM
+        if (!program || program.PRG_CODE !== PRG_CODE) {
+          wrongRows.push(row);
+          continue;
+        }
+
+
+
+        const unit = await CodeDB.collection("UNITCODE").findOne({
+          Unit_Code: row.uc,
+        });
+
+        if (!unit) {
+          wrongRows.push(row);
+          continue;
+        }
+
+        // INSERT CLEAN DATA
+        recordsToInsert.push({
+          Profile: {
+            CE: currentCE,
+            FormNumber: row.fn,
+            CuetRollNumber: row.trn,
+            ProgrameName: program.Full_Form,
+            Unit: unit ? unit.Unit_Name : null,
+            EnrolmentNumber: row.en,
+            Name: row.nm,
+            FatherName: row.gn,
+            MotherName: row.mn,
+            ABCIdNumber: row.abc,
+            Gender: row.gen,
+            SocialCategory: row.scat,
+            AdharNumber: row.adhar,
+            DateofBirth: row.dob,
+            YearOfAdmission: year,
+            DateOfModification: "",
+            DateofCreation: formattedDate,
+            PDF: "PDF",
+          },
+          Result: {
+            CE: currentCE,
+            EnrolmentNumber: row.en,
+            RollNumber: row.rn,
+          },
+          TS: {
+            CE: currentCE,
+            EnrolmentNumber: row.en,
+            RollNumber: row.rn,
+          },
+        });
+
+        // GENERATE NEXT CE FOR NEXT ROW
+        currentCE = generateNextCE(currentCE);
+      }
+
+      // -----------------------------
+      // SEPARATE INTO 3 COLLECTION ARRAYS
+      // -----------------------------
+      let profileData = [];
+      let resultData = [];
+      let tsData = [];
+
+      for (const rec of recordsToInsert) {
+        profileData.push(rec.Profile);
+        resultData.push(rec.Result);
+        tsData.push(rec.TS);
+      }
+
+
+      // -----------------------------
+      // INSERT INTO 3 COLLECTIONS
+      // -----------------------------
+      const AdmissionDB = client.db("NepUG");
+
+      if (profileData.length > 0) {
+        await AdmissionDB.collection(`${program.DB_CL}_PROFILE`).insertMany(profileData);
+      }
+
+      if (resultData.length > 0) {
+        await AdmissionDB.collection(`${program.DB_CL}1_RESULT`).insertMany(resultData);
+      }
+
+      if (tsData.length > 0) {
+        await AdmissionDB.collection(`${program.DB_CL}_TS`).insertMany(tsData);
+      }
+
+      // -----------------------------
+      // SAVE LAST CE USED IN DB
+      // -----------------------------
+      await CeDB.collection(`CE${lastOfYear}`).insertOne({
+        _id: currentCE,
+        createdAt: formattedDate,
+      });
+
+      // -----------------------------
+      // HANDLE WRONG PROGRAM ROWS
+      // -----------------------------
+      if (wrongRows.length > 0) {
+        const ws = XLSX.utils.json_to_sheet(wrongRows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Wrong_Data");
+
+        const exportBuffer = XLSX.write(wb, {
+          type: "buffer",
+          bookType: "xlsx",
+        });
+
+        res.setHeader(
+          "Content-Disposition",
+          "attachment; filename=wrong_Data_codes.xlsx"
+        );
+        res.setHeader(
+          "Content-Type",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        );
+        res.setHeader(
+          "X-Message",
+          `Total ${recordsToInsert.length} valid candidates`
+        );
+
+        return res.send(exportBuffer);
+      }
+
+      // -----------------------------
+      // FINAL SUCCESS RESPONSE
+      // -----------------------------
       res.status(200).send({
-        status: "Sucess",
-        message: `File containing: ${data.length} candidates`,
+        status: "Success",
+        message: `Total ${recordsToInsert.length} candidates of ${program.Full_Form}`,
       });
     } catch (error) {
+      console.log(error);
       res.status(400).send({
-        status: "Failes",
-        message: "Their is some PRB",
+        status: "Failed",
+        message: "There is some problem",
       });
+    } finally {
+      await client.close();
     }
   };
-
-
-
 
   static getUnit = async (req, res) => {
     const client = new MongoClient(URL);
