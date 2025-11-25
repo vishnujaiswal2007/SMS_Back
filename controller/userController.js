@@ -323,19 +323,36 @@ class userController {
 
   static getcourse = async (req, res) => {
     const client = new MongoClient(URL);
-    const database = client.db("COURSES");
-    const data = await database
-      .collection("COURSES")
-      .find({ COURSE: req.params.CR, TYPE: req.params.type })
-      .toArray(function (err, result) {
-        if (err) throw err;
-        return result;
+    if (req.params.type === "NEP") {
+      const database = client.db("NEP");
+      const data = await database
+        .collection("CourseName")
+        .find({ COURSE: req.params.CR })
+        .toArray(function (err, result) {
+          if (err) throw err;
+          return result;
+        });
+
+      res.send({
+        status: "sucess",
+        message: "UG Courses",
+        data,
       });
-    res.send({
-      status: "sucess",
-      message: "UG Courses",
-      data,
-    });
+    } else {
+      const database = client.db("COURSES");
+      const data = await database
+        .collection("COURSES")
+        .find({ COURSE: req.params.CR, TYPE: req.params.type })
+        .toArray(function (err, result) {
+          if (err) throw err;
+          return result;
+        });
+      res.send({
+        status: "sucess",
+        message: "UG Courses",
+        data,
+      });
+    }
   };
 
   static getVerify = async (req, res) => {
@@ -507,6 +524,61 @@ class userController {
 
       // console.log("Excel data loaded:", data.length, "rows");
 
+      // -----------------------------
+      // LGIC To Generate ROLL-NUMBER
+      // -----------------------------
+      //take the year number eg. 2025=> 25
+      // const lastOfYear = String(year).slice(2);
+
+      // -----------------------------
+      // HELPER FUNCTION – GENERATE NEXT CE
+      // -----------------------------
+      // function generateNextCE(currentCE) {
+      //   const yearPart = currentCE.slice(2, 4);
+      //   let numberPart = parseInt(currentCE.slice(4));
+      //   numberPart++;
+      //   return `CE${yearPart}${String(numberPart).padStart(6, "0")}`;
+      // }
+
+      // -----------------------------
+      // FETCH LAST CE SAFELY
+      // -----------------------------
+      // const CeDB = client.db("CENUMBER");
+      // const lastRow = await CeDB.collection(`CE${lastOfYear}`)
+      //   .find({})
+      //   .sort({ _id: -1 })
+      //   .limit(1)
+      //   .toArray();
+
+      // let currentCE;
+
+      // if (lastRow.length > 0) {
+      //   let lastCE = String(lastRow[0]._id).trim();
+
+      //   const validCEPattern = /^CE\d{8}$/;
+
+      //   if (validCEPattern.test(lastCE)) {
+      //     let nextNum = parseInt(lastCE.slice(4)) + 1;
+      //     currentCE = `CE${lastOfYear}${String(nextNum).padStart(6, "0")}`;
+      //   } else {
+      //     console.log("INVALID CE FOUND IN DB:", lastCE);
+      //     console.log("Resetting and starting fresh.");
+      //     currentCE = `CE${lastOfYear}000001`;
+      //   }
+      // } else {
+      //   currentCE = `CE${lastOfYear}000001`;
+      // }
+      // GENERATE NEXT CE FOR NEXT ROW
+      // currentCE = generateNextCE(currentCE);
+
+      // -----------------------------
+      // SAVE LAST CE USED IN DB
+      // -----------------------------
+      // await CeDB.collection(`CE${lastOfYear}`).insertOne({
+      //   _id: currentCE,
+      //   createdAt: formattedDate,
+      // });
+
       res.status(200).send({
         status: "Sucess",
         message: "All is well",
@@ -535,47 +607,10 @@ class userController {
       const year = date.getFullYear();
       const formattedDate = `${day}/${month}/${year}`;
       const lastOfYear = String(year).slice(2);
+      const nextofYear = parseInt(lastOfYear) + 1;
+     
 
       const PRG_CODE = req.body.PRG;
-
-      // -----------------------------
-      // HELPER FUNCTION – GENERATE NEXT CE
-      // -----------------------------
-      function generateNextCE(currentCE) {
-        const yearPart = currentCE.slice(2, 4);
-        let numberPart = parseInt(currentCE.slice(4));
-        numberPart++;
-        return `CE${yearPart}${String(numberPart).padStart(6, "0")}`;
-      }
-
-      // -----------------------------
-      // FETCH LAST CE SAFELY
-      // -----------------------------
-      const CeDB = client.db("CENUMBER");
-      const lastRow = await CeDB.collection(`CE${lastOfYear}`)
-        .find({})
-        .sort({ _id: -1 })
-        .limit(1)
-        .toArray();
-
-      let currentCE;
-
-      if (lastRow.length > 0) {
-        let lastCE = String(lastRow[0]._id).trim();
-
-        const validCEPattern = /^CE\d{8}$/;
-
-        if (validCEPattern.test(lastCE)) {
-          let nextNum = parseInt(lastCE.slice(4)) + 1;
-          currentCE = `CE${lastOfYear}${String(nextNum).padStart(6, "0")}`;
-        } else {
-          console.log("INVALID CE FOUND IN DB:", lastCE);
-          console.log("Resetting and starting fresh.");
-          currentCE = `CE${lastOfYear}000001`;
-        }
-      } else {
-        currentCE = `CE${lastOfYear}000001`;
-      }
 
       // -----------------------------
       // READ EXCEL
@@ -592,24 +627,44 @@ class userController {
       // -----------------------------
       // PROCESS EACH ROW
       // -----------------------------
-      let program
+      let program;
       for (const row of data) {
         const CoursesDB = client.db("COURSES");
         const CodeDB = client.db("CODE");
+        const discipline = client.db("NEP")
+        const paper = client.db("NEP")
 
+        //--------------
+        //Discipline
+        //-----------
+        const disciplineMajor1 = await discipline.collection("Discipline").findOne({Number_Code: String(row.sb11)});
+        const disciplineMajor2 = await discipline.collection("Discipline").findOne({Number_Code: String(row.sb12)});
+        const disciplineMinor = await discipline.collection("Discipline").findOne({Number_Code: String(row.sb13)});
+
+        //-------------
+        //Major and Minor Papers of Major Minor Discipline
+        //-----------
+        const paperMajorDiscipline1 = await paper.collection("PaperDetails").find({CBCS_CATEGORY:"MAJOR", String_Code: disciplineMajor1?.String_Code}).toArray()
+        // const paperMinorDiscipline1 = await paper.collection("PaperDetails").findOne({CBCS_CATEGORY:"MINOR", String_Code: disciplineMajor1?.String_Code})
+
+        const paperMajorDiscipline2 = await paper.collection("PaperDetails").find({CBCS_CATEGORY:"MAJOR", String_Code: disciplineMajor2?.String_Code}).toArray()
+        // const paperMinorDiscipline2 = await paper.collection("PaperDetails").findOne({CBCS_CATEGORY:"MINOR", String_Code: disciplineMajor2?.String_Code})
+
+        const paperMinorDiscipline = await paper.collection("PaperDetails").findOne({CBCS_CATEGORY:"MINOR", String_Code: disciplineMinor?.String_Code})
+
+     
+     
+       
         program = await CoursesDB.collection("COURSES").findOne({
           CourseNameCode: row.cc,
           TYPE: "NEP",
         });
 
-             
         // WRONG PROGRAM
         if (!program || program.PRG_CODE !== PRG_CODE) {
           wrongRows.push(row);
           continue;
         }
-
-
 
         const unit = await CodeDB.collection("UNITCODE").findOne({
           Unit_Code: row.uc,
@@ -623,7 +678,7 @@ class userController {
         // INSERT CLEAN DATA
         recordsToInsert.push({
           Profile: {
-            CE: currentCE,
+            Session: year+"-"+nextofYear,
             FormNumber: row.fn,
             CuetRollNumber: row.trn,
             ProgrameName: program.Full_Form,
@@ -642,20 +697,42 @@ class userController {
             DateofCreation: formattedDate,
             PDF: "PDF",
           },
+
+               
+
           Result: {
-            CE: currentCE,
+            Session: year+"-"+nextofYear,
             EnrolmentNumber: row.en,
             RollNumber: row.rn,
+            MajorDiscipline1: disciplineMajor1?.DISCIPLINE ||"",
+            MajorPaper1MajorDspcipline1: paperMajorDiscipline1[0]?.COURSE_NAME ||"",
+            MajorPaper2MajorDspcipline1: paperMajorDiscipline1[1]?.COURSE_NAME ||"",
+            MajorPaper3MajorDspcipline1: paperMajorDiscipline1[2]?.COURSE_NAME ||"",
+            MajorDiscipline2: disciplineMajor2?.DISCIPLINE ||"",
+            MajorPaper1MajorDspcipline2: paperMajorDiscipline2[0]?.COURSE_NAME ||"",
+            MajorPaper2MajorDspcipline2: paperMajorDiscipline2[1]?.COURSE_NAME ||"",
+            MajorPaper3MajorDspcipline2: paperMajorDiscipline2[2]?.COURSE_NAME ||"",
+            MinorDiscipline: disciplineMinor?.DISCIPLINE ||"",
+            MinorPaperMinorDiscipline: paperMinorDiscipline?.COURSE_NAME ||"",
+            Skill:row?.skil || "",
           },
           TS: {
-            CE: currentCE,
+            Session: year+"-"+nextofYear,
             EnrolmentNumber: row.en,
             RollNumber: row.rn,
+            MajorDiscipline1: disciplineMajor1?.DISCIPLINE ||"",
+            MajorPaper1MajorDspcipline1: paperMajorDiscipline1[0]?.COURSE_NAME ||"",
+            MajorPaper2MajorDspcipline1: paperMajorDiscipline1[1]?.COURSE_NAME ||"",
+            MajorPaper3MajorDspcipline1: paperMajorDiscipline1[2]?.COURSE_NAME ||"",
+            MajorDiscipline2: disciplineMajor2?.DISCIPLINE ||"",
+            MajorPaper1MajorDspcipline2: paperMajorDiscipline2[0]?.COURSE_NAME ||"",
+            MajorPaper2MajorDspcipline2: paperMajorDiscipline2[1]?.COURSE_NAME ||"",
+            MajorPaper3MajorDspcipline2: paperMajorDiscipline2[2]?.COURSE_NAME ||"",
+            MinorDiscipline: disciplineMinor?.DISCIPLINE ||"",
+            MinorPaperMinorDiscipline: paperMinorDiscipline?.COURSE_NAME ||"",
+            Skill:row?.skil || "",
           },
         });
-
-        // GENERATE NEXT CE FOR NEXT ROW
-        currentCE = generateNextCE(currentCE);
       }
 
       // -----------------------------
@@ -671,31 +748,26 @@ class userController {
         tsData.push(rec.TS);
       }
 
-
       // -----------------------------
       // INSERT INTO 3 COLLECTIONS
       // -----------------------------
       const AdmissionDB = client.db("NepUG");
 
       if (profileData.length > 0) {
-        await AdmissionDB.collection(`${program.DB_CL}_PROFILE`).insertMany(profileData);
+        await AdmissionDB.collection(`${program.DB_CL}_PROFILE`).insertMany(
+          profileData
+        );
       }
 
       if (resultData.length > 0) {
-        await AdmissionDB.collection(`${program.DB_CL}1_RESULT`).insertMany(resultData);
+        await AdmissionDB.collection(`${program.DB_CL}1_RESULT`).insertMany(
+          resultData
+        );
       }
 
       if (tsData.length > 0) {
         await AdmissionDB.collection(`${program.DB_CL}_TS`).insertMany(tsData);
       }
-
-      // -----------------------------
-      // SAVE LAST CE USED IN DB
-      // -----------------------------
-      await CeDB.collection(`CE${lastOfYear}`).insertOne({
-        _id: currentCE,
-        createdAt: formattedDate,
-      });
 
       // -----------------------------
       // HANDLE WRONG PROGRAM ROWS
