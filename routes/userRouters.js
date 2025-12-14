@@ -28,6 +28,8 @@ router.post(`/reset/:id/:token`, userController.reset)
 router.get(`/getcourse/:CR/:type`, userController.getcourse)
 router.post('/desig',userController.getDesig)
 router.get(`/getUnit`, userController.getUnit)
+router.post(`/getPapers`, userController.getPapers)
+router.post(`/getDiscipline`, userController.getDiscipline)
 
 //Private Routers
 router.post('/chngpas', userController.changepassword)
