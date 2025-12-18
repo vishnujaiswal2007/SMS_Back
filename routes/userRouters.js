@@ -15,6 +15,7 @@ router.use('/getdetails', checkUserAuth)
 router.use('/updateRecord', checkUserAuth)
 router.use('CbcsUgProfile', checkUserAuth)
 router.use('/AdmissionNepUG', checkUserAuth)
+router.use('/upLoadMarks',checkUserAuth)
 
 
 //Public Roters
@@ -31,6 +32,7 @@ router.get(`/getUnit`, userController.getUnit)
 router.post(`/getPapers`, userController.getPapers)
 router.post(`/getDiscipline`, userController.getDiscipline)
 
+
 //Private Routers
 router.post('/chngpas', userController.changepassword)
 router.post('/getverify', userController.getVerify)
@@ -38,6 +40,6 @@ router.post('/getdetails', userController.getdetails)
 router.post('/updateRecord', userController.updateRecord)
 router.post('/CbcsUgProfile', upload.single("file"), userController.CbcsUgProfile)
 router.post('/AdmissionNepUG', upload.single("file"), userController.AdmissionNepUG)
-
+router.post('/upLoadMarks', upload.single("file"), userController.UploadMarks)
 
 export default router
