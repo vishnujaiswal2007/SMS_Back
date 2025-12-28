@@ -1607,721 +1607,274 @@ class userController {
     }
   };
 
-  // static UploadMarks = async (req, res) => {
-  //   if (!req.file) {
-  //     return res.status(400).send({
-  //       status: "Fail",
-  //       message: "Excel file is required",
-  //     });
-  //   }
-
-  //   const client = new MongoClient(URL);
-
-  //   try {
-  //     // =========================
-  //     // READ EXCEL
-  //     // =========================
-  //     const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
-  //     const sheetName = workbook.SheetNames[0];
-  //     const sheet = workbook.Sheets[sheetName];
-  //     const data = XLSX.utils.sheet_to_json(sheet);
-
-  //     if (!data.length) {
-  //       return res.send({
-  //         status: "Fail",
-  //         message: "Excel file is empty",
-  //       });
-  //     }
-
-  //     // =========================
-  //     // VALIDATE HEADERS
-  //     // =========================
-  //     const REQUIRED_COLUMNS = ["rn", "sb", "pa", "en", "cat", "mrk11"];
-  //     const excelColumns = Object.keys(data[0]);
-
-  //     const missingColumns = REQUIRED_COLUMNS.filter(
-  //       (c) => !excelColumns.includes(c)
-  //     );
-
-  //     if (missingColumns.length) {
-  //       return res.send({
-  //         status: "Fail",
-  //         message: "Invalid Excel format",
-  //         missingColumns,
-  //       });
-  //     }
-
-  //     // =========================
-  //     // DB CONNECTION
-  //     // =========================
-  //     await client.connect();
-
-  //     const myobj = req.body;
-
-  //          const resultCol = client
-  //     .db("NepUG")
-  //     .collection(myobj.DB_CL + "_RESULT");
-
-  //         // fetch all candidates of that session ONCE
-  //   const sessionCandidates = await resultCol
-  //     .find({ Session: myobj.session })
-  //     .toArray();
-
-  //     const nepDB = client.db("NEP")
-
-  //   const notFoundCandidates = [];
-  //   const bulkOps = [];
-
-  //      // =========================
-  //   // PROCESS EACH ROW
-  //   // =========================
-  //   for (const [index, dt] of data.entries()) {
-  //     const excelRow = index + 2;
-
-  //     const candidate = sessionCandidates.find(
-  //       c =>
-  //         String(c.EnrolmentNumber).trim() === String(dt.en).trim() &&
-  //       String(c.RollNumber).trim() === String(dt.rn).trim()
-  //     );
-  //     if (!candidate) {
-  //               notFoundCandidates.push({
-  //                 row: excelRow,
-  //                 RollNumber: dt.rn,
-  //                 EnrolmentNumber: dt.en,
-  //                OptedDiscipline: candidate?.DISCIPLINE,
-  //                   OptedPaper: candidate?.COURSE_NAME,
-  //                   Marks:dt.mrk11,
-  //                 Reason: "Candidate not found",
-  //               });
-  //               continue;
-  //             }
-
-  //       const discipline = await nepDB
-  //       .collection("DiciplineDetails")
-  //       .findOne({ Number_Code: parseInt(dt.sb) });
-
-  //       const paper = await nepDB
-  //       .collection("PaperDetails")
-  //       .findOne({
-  //         DISCIPLINE: discipline?.DISCIPLINE?.trim(),
-  //         PaperCode: parseInt(dt.pa),
-
-  //       })
-
-  //       if (!discipline || !paper) {
-  //                   notFoundCandidates.push({
-  //                     row: excelRow,
-  //                     RollNumber: dt.rn,
-  //                     EnrolmentNumber: dt.en,
-  //                     Discipline: discipline?.DISCIPLINE,
-  //                     Paper: paper?.COURSE_NAME,
-  //                     Marks:dt.mrk11,
-  //                     Reason: "Discipline/paper not found",
-  //                   });
-  //                   continue;
-  //                 }
-
-  //                 const disciplineName = discipline?.DISCIPLINE?.trim();
-
-  //                 // console.log("Discipline", disciplineName)
-  //                 // console.log("Candidate", candidate.MajorDiscipline1)
-
-  //                         const isMajor1 = candidate.MajorDiscipline1 === disciplineName;
-  //                         const isMajor2 = candidate.MajorDiscipline2 === disciplineName;
-  //                         const isMinor  = candidate.MinorDiscipline  === disciplineName;
-
-  //                         // console.log("Major1",isMajor1)
-  //                         // console.log("Major2",isMajor2)
-  //                         // console.log("Minor",isMinor)
-
-  //                         if (!isMajor1 && !isMajor2 && !isMinor) {
-
-  //                                     notFoundCandidates.push({
-  //                                       row: excelRow,
-  //                                       RollNumber: dt.rn,
-  //                                       EnrolmentNumber: dt.en,
-  //                                       Discipline: disciplineName,
-  //                                       Paper: paper.COURSE_NAME,
-  //                                       Marks:dt.mrk11,
-  //                                       Reason: "Discipline not linked to candidate",
-  //                                     });
-  //                                     continue;
-  //                                   }
-
-  //       // =========================
-  //       // BUILD UPDATE OBJECT
-  //       // =========================
-  //       const updateFields = {};
-  //       const paperName = paper?.COURSE_NAME?.trim();
-
-  //       // MAJOR 1
-  //       if (isMajor1) {
-  //         if (candidate.MajorDiscipline1Paper1 === paperName &&
-  //           (candidate.MajorDiscipline1Paper1Obtained === "" ||
-  //            candidate.MajorDiscipline1Paper1Obtained == null)) {
-
-  //           if(dt.mrk11>candidate.MajorDiscipline1Paper1Max){
-  //             notFoundCandidates.push({
-  //               row: excelRow,
-  //               RollNumber: dt.rn,const theoryPassPercentage = Math.round(student.MajorDiscipline1TheoryTotalMax * 0.4);
-  //               EnrolmentNumber: dt.en,
-  //               Discipline: disciplineName,
-  //               Paper: paper.COURSE_NAME,
-  //               MaximumMarks: candidate.MajorDiscipline1Paper1Max,
-  //               Marks:dt.mrk11,
-  //               Reason: "Obtained Marks is Greater than Maximum Marks",
-  //             });
-  //             continue;
-  //           }else{
-  //             updateFields.MajorDiscipline1Paper1Obtained = dt.mrk11;
-  //           }
-  //           } else {
-  //             notFoundCandidates.push({
-  //               row: excelRow,
-  //               RollNumber: dt.rn,
-  //               EnrolmentNumber: dt.en,
-  //               Discipline: disciplineName,
-  //                 Paper: paperName,
-  //                 Marks:dt.mrk11,
-  //               Reason: "Major Discipline1 Paper1 is not linked",
-  //             });
-  //             continue;
-
-  //           }
-
-  //           if (candidate.MajorDiscipline1Paper2 === paperName &&
-  //             (candidate.MajorDiscipline1Paper2Obtained === "" ||
-  //              candidate.MajorDiscipline1Paper2Obtained == null)) {
-  //             if(dt.mrk11>candidate.MajorDiscipline1Paper2Max){
-  //               notFoundCandidates.push({
-  //                 row: excelRow,
-  //                 RollNumber: dt.rn,
-  //                 EnrolmentNumber: dt.en,
-  //                 Discipline: disciplineName,
-  //                 Paper: paper.COURSE_NAME,
-  //                 MaximumMarks: candidate.MajorDiscipline1Paper2Max,
-  //                 Marks:dt.mrk11,
-  //                 Reason: "Obtained Marks is Greater than Maximum Marks",
-  //               });const theoryPassPercentage = Math.round(student.MajorDiscipline1TheoryTotalMax * 0.4);
-  //               continue;
-  //             }else{
-  //             updateFields.MajorDiscipline1Paper2Obtained = dt.mrk11;
-  //             }
-  //           }else {
-  //             notFoundCandidates.push({
-  //               row: excelRow,
-  //               RollNumber: dt.rn,
-  //               EnrolmentNumber: dt.en,
-  //               Discipline: disciplineName,
-  //                 Paper: paperName,
-  //                 Marks:dt.mrk11,
-  //               Reason: "Major Discipline1 Paper2 is not linked",
-  //             });
-  //             continue;
-
-  //           }
-
-  //           if (candidate.MajorDiscipline1Paper3 === paperName &&
-  //             (candidate.MajorDiscipline1Paper3Obtained === "" ||
-  //              candidate.MajorDiscipline1Paper3Obtained == null)) {
-
-  //             if(dt.mrk11>candidate.MajorDiscipline1Paper3Max){
-  //               notFoundCandidates.push({
-  //                 row: excelRow,
-  //                 RollNumber: dt.rn,
-  //                 EnrolmentNumber: dt.en,
-  //                 Discipline: disciplineName,
-  //                 Paper: paper.COURSE_NAME,
-  //                 MaximumMarks: candidate.MajorDiscipline1Paper3Max,
-  //                 Marks:dt.mrk11,
-  //                 Reason: "Obtained Marks is Greater than Maximum Marks",
-  //               });
-  //               continue;
-  //             }else{
-  //             updateFields.MajorDiscipline1Paper3Obtained = dt.mrk11;
-  //             }
-  //           }else {
-  //             notFoundCandidates.push({
-  //               row: excelRow,
-  //               RollNumber: dt.rn,
-  //               EnrolmentNumber: dt.en,
-  //               Discipline: disciplineName,
-  //                 Paper: paperName,
-  //                 Marks:dt.mrk11,
-  //               Reason: "Major Discipline1 Paper3 is not linked",
-  //             });
-  //             continue;
-  //           }
-
-  //           if (paperName === "CIA" &&
-  //             (candidate.MajorDiscipline1CiaObconst theoryPassPercentage = Math.round(student.MajorDiscipline1TheoryTotalMax * 0.4);tained === "" ||
-  //              candidate.MajorDiscipline1CiaObtained == null)) {
-
-  //             if(dt.mrk11>candidate.MajorDiscipline1CiaMax){
-  //               notFoundCandidates.push({
-  //                 row: excelRow,
-  //                 RollNumber: dt.rn,
-  //                 EnrolmentNumber: dt.en,
-  //                 Discipline: disciplineName,
-  //                 Paper: paper.COURSE_NAME,
-  //                 MaximumMarks: candidate.MajorDiscipfirstline1CiaMax,
-  //                 Marks:dt.mrk11,
-  //                 Reason: "Obtained Marks is Greater than Maximum Marks",
-  //               });
-  //               continue;
-  //             }else{
-  //             updateFields.MajorDiscipline1CiaObtained = dt.mrk11;
-  //             }
-  //           }else {
-  //             notFoundCandidates.push({
-  //               row: excelRow,
-  //               RollNumber: dt.rn,
-  //               EnrolmentNumber: dt.en,
-  //               Discipline: disciplineName,
-  //                 Paper: paperName,
-  //                 Marks:dt.mrk11,
-  //               Reason: "Major Discipline1 CIA is not linked",
-  //             });
-  //             continue;
-  //           }
-  //         }
-
-  //          // MAJOR 2
-  //       if (isMajor2) {
-  //         if (candidate.MajorDiscipline2Paper1 === paperName &&
-  //           (candidate.MajorDiscipline2Paper1Obtained === "" ||
-  //            candidate.MajorDiscipline2Paper1Obtained == null)) {
-  //           if(dt.mrk11>candidate.MajorDiscipline2Paper1Max){
-  //             notFoundCandidates.push({
-  //               row: excelRow,
-  //               RollNumber: dt.rn,
-  //               EnrolmentNumber: dt.en,
-  //               Discipline: disciplineName,
-  //               Paper: paper.COURSE_NAME,
-  //               MaximumMarks: candidate.MajorDiscipline2Paper1Max,
-  //               Marks:dt.mrk11,
-  //               Reason: "Obtained Marks is Greater than Maximum Marks",
-  //             });
-  //             continue;
-  //           }else{
-  //           updateFields.MajorDiscipline2Paper1Obtained = dt.mrk11;
-  //           }
-  //         }else {
-  //           notFoundCandidates.push({
-  //             row: excelRow,
-  //             RollNumber: dt.rn,
-  //             EnrolmentNumber: dt.en,
-  //             Discipline: disciplineName,
-  //               Paper: paperName,
-  //               Marks:dt.mrk11,
-  //             Reason: "Major Discipline2 Paper1 is not linked",
-  //           });
-  //           continue;
-  //         }
-
-  //         if (candidate.MajorDiscipline2Paper2 === paperName &&
-  //           (candidate.MajorDiscipline2Paper2Obtained === "" ||
-  //            candidate.MajorDiscipline2Paper2Obtained == null)) {
-  //           if(dt.mrk11>candidate.MajorDiscipline2Paper2Max){
-  //             notFoundCandidates.push({
-  //               row: excelRow,
-  //               RollNumber: dt.rn,
-  //               EnrolmentNumber: dt.en,
-  //               Discipline: disciplineName,
-  //               Paper: paper.COURSE_NAME,
-  //               MaximumMarks: candidate.MajorDiscipline2Paper2Max,
-  //               Marks:dt.mrk11,
-  //               Reason: "Obtained Marks is Greater than Maximum Marks",
-  //             });first
-  //             continue;
-  //           }else{
-  //           updateFields.MajorDiscipline2Paper2Obtained = dt.mrk11;
-  //           }
-  //         }else {
-  //           notFoundCandidates.push({
-  //             row: excelRow,
-  //             RollNumber: dt.rn,
-  //             EnrolmentNumber: dt.en,
-  //             Discipline: disciplineName,
-  //               Paper: paperName,
-  //               Marks:dt.mrk11,
-  //             Reason: "Major Discipline2 Paper2 is not linked",
-  //           });
-  //           continue;
-  //         }
-
-  //         if (candidate.MajorDiscipline2Paper3 === paperName &&
-  //           (candidate.MajorDiscipline2Paper3Obtained === "" ||
-  //            candidate.MajorDiscipline2Paper3Obtained == null)) {
-  //           if(dt.mrk11>candidate.MajorDiscipline2Paper3Max){
-  //             notFoundCandidates.push({
-  //               row: excelRow,
-  //               RollNumber: dt.rn,
-  //               EnrolmentNumber: dt.en,
-  //               Discipline: disciplineName,
-  //               Paper: paper.COURSE_NAME,
-  //               MaximumMarks: candidate.MajorDiscipline2Paper3Max,
-  //               Marks:dt.mrk11,
-  //               Reason: "Obtained Marks is Greater than Maximum Marks",
-  //             });
-  //             continue;
-  //           }else{
-  //           updateFields.MajorDiscipline2Paper3Obtained = dt.mrk11;
-  //           }
-
-  //         }else {
-  //           notFoundCandidates.push({
-  //             row: excelRow,
-  //             RollNumber: dt.rn,
-  //             EnrolmentNumber: dt.en,
-  //             Discipline: disciplineName,
-  //               Paper: paperName,
-  //               Marks:dt.mrk11,
-  //             Reason: "Major Discipline2 Paper3 is not linked",
-  //           });
-  //           continue;
-  //         }
-
-  //         if (paperName === "CIA" &&
-  //           (candidate.MajorDiscipline2CiaObtained === "" ||
-  //            candidate.MajorDiscipline2CiaObtained == null)) {
-  //           if(dt.mrk11>candidate.MajorDiscipline1CiaMax){
-  //             notFoundCandidates.push({
-  //               row: excelRow,
-  //               RollNumber: dt.rn,
-  //               EnrolmentNumber: dt.en,
-  //               Discipline: disciplineName,
-  //               Paper: paper.COURSE_NAME,
-  //               MaximumMarks: candidate.MajorDiscipline1CiaMax,
-  //               Marks:dt.mrk11,
-  //               Reason: "Obtained Marks is Greater than Maximum Marks",
-  //             });
-  //             continue;
-  //           }else{
-  //           updateFields.MajorDiscipline2CiaObtained = dt.mrk11;
-  //         }
-  //       }else {
-  //         notFoundCandidates.push({
-  //           row: excelRow,
-  //           RollNumber: dt.rn,
-  //           EnrolmentNumber: dt.en,
-  //           Discipline: disciplineName,
-  //             Paper: paperName,
-  //             Marks:dt.mrk11,
-  //           Reason: "Major Discipline2 Cia is not linked",
-  //         });
-  //         continue;
-  //       }
-  //     }
-
-  //       // MINOR
-  //       if (isMinor) {
-  //         if (candidate.MinorDisciplinePaper === paperName &&
-  //           (candidate.MinorDisciplinePaperObtained === "" ||
-  //            candidate.MinorDisciplinePaperObtained == null))  {
-  //           if(dt.mrk11>candidate.MinorDisciplinconst theoryPassPercentage = Math.round(student.MajorDiscipline1TheoryTotalMax * 0.4);ePaperMax){
-  //             notFoundCandidates.push({
-  //               row: excelRow,
-  //               RollNumber: dt.rn,
-  //               EnrolmentNumber: dt.en,
-  //               Discipline: disciplineName,
-  //               Paper: paper.COURSE_NAME,
-  //               MaximumMarks: candidate.MinorDisciplinePaperMax,
-  //               Marks:dt.mrk11,
-  //               Reason: "Obtained Marks is Greater than Maximum Marks",
-  //             });
-  //             continue;
-
-  //           }else{
-  //           updateFields.MinorDisciplinePaperObtained = dt.mrk11;
-  //         }
-  //       }else {
-  //         notFoundCandidates.push({
-  //           row: excelRow,
-  //           RollNumber: dt.rn,
-  //           EnrolmentNumber: dt.en,
-  //           Discipline: disciplineName,
-  //             Paper: paperName,
-  //             Marks:dt.mrk11,
-  //           Reason: "Minor Discipline Paper is not linked",
-  //         });
-  //         continue;
-  //       }
-
-  //       if (paperName === "CIA"&&
-  //         (candidate.MinorDisciplineCiaObtained === "" ||
-  //          candidate.MinorDisciplineCiaObtained == null)) {
-  //           if(dt.mrk11>candidate.MinorDisciplineCiaMax){
-  //             notFoundCandidates.push({
-  //               row: excelRow,
-  //               RollNumber: dt.rn,
-  //               EnrolmentNumber: dt.en,
-  //               Discipline: disciplineName,
-  //               Paper: paper.COURSE_NAME,
-  //               MaximumMarks: candidate.MinorDisciplineCiaMax,
-  //               Marks:dt.mrk11,
-  //               Reason: "Obtained Marks is Greater than Maximum Marks",
-  //             });
-  //             continue;
-  //           }else{
-
-  //           updateFields.MinorDisciplineCiaObtained = dt.mrk11;
-
-  //         }
-  //       }else {
-  //         notFoundCandidates.push({
-  //           row: excelRow,
-  //           RollNumber: dt.rn,
-  //           EnrolmentNumber: dt.en,
-  //           Discipline: disciplineName,
-  //             Paper: paperName,
-  //             Marks:dt.mrk11,
-  //           Reason: "CIA is not linked",
-  //         });const theoryPassPercentage = Math.round(student.MajorDiscipline1TheoryTotalMax * 0.4);
-  //         continue;
-  //       }
-  //     }
-
-  //     if (Object.keys(updateFields).length > 0) {
-  //     bulkOps.push({
-  //       updateOne: {
-  //         filter: { _id: candidate._id },
-  //         update: { $set: updateFields },
-  //       },
-  //     });
-  //   }
-
-  //   }
-
-  //         // =========================
-  //     // EXECUTE BULK UPDATE
-  //     // =========================
-  //     if (bulkOps.length) {
-  //       await resultCol.bulkWrite(bulkOps);
-  //       // const updateCount = await resultCol.bulkWrite(bulkOps);
-  //       // console.log(updateCount);
-  //       // console.log(updateCount.matchedCount);
-  //       // console.log(updateCount.modifiedCount);
-  //     }
-
-  //     // =========================
-  //     // IF ERRORS EXIST → DOWNLOAD EXCEL
-  //     // =========================
-  //     if (notFoundCandidates.length > 0) {
-  //       const errorSheet = XLSX.utils.json_to_sheet(notFoundCandidates);
-
-  //       const errorWorkbook = XLSX.utils.book_new();
-  //       XLSX.utils.book_append_sheet(
-  //         errorWorkbook,
-  //         errorSheet,
-  //         "Not Found Candidates"
-  //       );
-
-  //       const buffer = XLSX.write(errorWorkbook, {
-  //         bookType: "xlsx",
-  //         type: "buffer",
-  //       });
-
-  //       res.setHeader(
-  //         "Content-Disposition",
-  //         "attachment; filename=NotFoundCandidates.xlsx"
-  //       );
-  //       res.setHeader(
-  //         "Content-Type",
-  //         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-  //       );
-
-  //       return res.send(buffer);
-  //     }
-  //      // 👇 VERY IMPORTANT
-  //   return res.json({
-  //     status: "Success",
-  //     message: "Marks uploaded successfully",
-  //     // updatedCount: bulkOps.length,
-  //   });
-  // }
-
-  // catch (error) {
-  //     console.error(error);
-  //     return res.status(500).send({
-  //       status: "Fail",
-  //       message: "Internal server error",
-  //     });
-  //   } finally {
-  //     await client.close();
-  //   }
-  // };
+ 
 
   static MakeResult = async (req, res) => {
     const client = new MongoClient(URL);
-
+  
     try {
       const myobj = req.body;
-
+  
       if (!myobj?.sem?.DB_CL || !myobj?.session) {
         return res.status(400).json({
           status: "Fail",
           message: "Invalid request data",
         });
       }
-
+  
       await client.connect();
       const db = client.db("NepUG");
       const collection = db.collection(`${myobj.sem.DB_CL}_RESULT`);
-
+  
       const candidates = await collection
         .find({ Session: myobj.session })
         .toArray();
-
+  
       if (!candidates.length) {
         return res.status(404).json({
           status: "Fail",
           message: "No students found for this session",
         });
       }
-
-      const safeInt = (v) => {
-        const n = parseInt(v, 10);
-        return Number.isInteger(n) ? n : 0;
-      };
-
+  
+      // ========================
+      // HELPER FUNCTIONS
+      // ========================
+      const safeInt = (v) => (v != null && !isNaN(v) ? Number(v) : 0);
+      const calculateTotal = (arr) => arr.map(safeInt).reduce((a, b) => a + b, 0);
+      const checkAbsent = (arr) => arr.map(safeInt).every((m) => m === 0);
+      const calc40Percent = (max) => Math.round(safeInt(max) * 0.4);
+      const isPass = (obtained, max) => safeInt(obtained) >= calc40Percent(max);
+  
       const bulkOps = [];
-
+      const reportRows = [];
+  
+      // ========================
+      // PROCESS EACH CANDIDATE
+      // ========================
       for (const student of candidates) {
         const updateFields = {};
+  
+        // ---- Major 1 ----
+        const major1TheoryObtained = calculateTotal([
+          student.MajorDiscipline1Paper1Obtained,
+          student.MajorDiscipline1Paper2Obtained,
+          student.MajorDiscipline1Paper3Obtained,
+        ]);
+        const major1TheoryMax = calculateTotal([
+          student.MajorDiscipline1Paper1Max,
+          student.MajorDiscipline1Paper2Max,
+          student.MajorDiscipline1Paper3Max,
+        ]);
+        const major1Cia = safeInt(student.MajorDiscipline1CiaObtained);
+        const major1Practical = safeInt(student.MajorDiscipline1PracticalObtained);
 
-        // ========================
-        // MAJOR 1
-        // ========================
-        const major1TheoryObtained =
-          safeInt(student.MajorDiscipline1Paper1Obtained) +
-          safeInt(student.MajorDiscipline1Paper2Obtained) +
-          safeInt(student.MajorDiscipline1Paper3Obtained);
 
-        const major1TheoryMax =
-          safeInt(student.MajorDiscipline1Paper1Max) +
-          safeInt(student.MajorDiscipline1Paper2Max) +
-          safeInt(student.MajorDiscipline1Paper3Max);
 
+  
         updateFields.MajorDiscipline1TheoryTotalObtained = major1TheoryObtained;
         updateFields.MajorDiscipline1TheoryTotalMax = major1TheoryMax;
-
         updateFields.MajorDiscipline1TotalObtained =
-          major1TheoryObtained +
-          safeInt(student.MajorDiscipline1CiaObtained) +
-          safeInt(student.MajorDiscipline1PracticalObtained);
-
-        // ========================
-        // MAJOR 2
-        // ========================
-        const major2TheoryObtained =
-          safeInt(student.MajorDiscipline2Paper1Obtained) +
-          safeInt(student.MajorDiscipline2Paper2Obtained) +
-          safeInt(student.MajorDiscipline2Paper3Obtained);
-
-        const major2TheoryMax =
-          safeInt(student.MajorDiscipline2Paper1Max) +
-          safeInt(student.MajorDiscipline2Paper2Max) +
-          safeInt(student.MajorDiscipline2Paper3Max);
-
+          major1TheoryObtained + major1Cia + major1Practical;
+  
+        if (
+          checkAbsent([
+            student.MajorDiscipline1Paper1Obtained,
+            student.MajorDiscipline1Paper2Obtained,
+            student.MajorDiscipline1Paper3Obtained,
+          ])
+        ) {
+          updateFields.MajorDiscipline1TheoryStatus = "ABSENT";
+        }
+        if (
+          checkAbsent([
+            student.MajorDiscipline1CiaObtained,
+          ])
+        ) {
+          updateFields.MajorDiscipline1CiaStatus = "ABSENT";
+        }
+        if (
+          checkAbsent([
+            student.MajorDiscipline1PracticalObtained,
+          ])
+        ) {
+          updateFields.MajorDiscipline1PracticalStatus = "ABSENT";
+        }
+  
+        // ---- Major 2 ----
+        const major2TheoryObtained = calculateTotal([
+          student.MajorDiscipline2Paper1Obtained,
+          student.MajorDiscipline2Paper2Obtained,
+          student.MajorDiscipline2Paper3Obtained,
+        ]);
+        const major2TheoryMax = calculateTotal([
+          student.MajorDiscipline2Paper1Max,
+          student.MajorDiscipline2Paper2Max,
+          student.MajorDiscipline2Paper3Max,
+        ]);
+        const major2Cia = safeInt(student.MajorDiscipline2CiaObtained);
+        const major2Practical = safeInt(student.MajorDiscipline2PracticalObtained);
+  
         updateFields.MajorDiscipline2TheoryTotalObtained = major2TheoryObtained;
         updateFields.MajorDiscipline2TheoryTotalMax = major2TheoryMax;
-
         updateFields.MajorDiscipline2TotalObtained =
-          major2TheoryObtained +
-          safeInt(student.MajorDiscipline2CiaObtained) +
-          safeInt(student.MajorDiscipline2PracticalObtained);
+          major2TheoryObtained + major2Cia + major2Practical;
 
-        // ========================
-        // MINOR
-        // ========================
-        updateFields.MinorDisciplineTotalObtained =
-          safeInt(student.MinorDisciplineCiaObtained) +
-          safeInt(student.MinorDisciplinePaperObtained) +
-          safeInt(student.MinorDisciplinePracticalObtained);
 
-        // ========================
-        // PUSH UPDATE
-        // ========================
+
+        if (
+          checkAbsent([
+            student.MajorDiscipline2Paper1Obtained,
+            student.MajorDiscipline2Paper2Obtained,
+            student.MajorDiscipline2Paper3Obtained,
+          ])
+        ) {
+          updateFields.MajorDiscipline2TheoryStatus = "ABSENT";
+        }
+        if (
+          checkAbsent([
+            student.MajorDiscipline2CiaObtained,
+          ])
+        ) {
+          updateFields.MajorDiscipline2CiaStatus = "ABSENT";
+        }
+        if (
+          checkAbsent([
+            student.MajorDiscipline2PracticalObtained,
+          ])
+        ) {
+          updateFields.MajorDiscipline2PracticalStatus = "ABSENT";
+        }
+
+  
+        // ---- Minor ----
+        const minorTotalObtained = calculateTotal([
+          student.MinorDisciplinePaperObtained,
+          student.MinorDisciplineCiaObtained,
+          student.MinorDisciplinePracticalObtained,
+        ]);
+        updateFields.MinorDisciplineTotalObtained = minorTotalObtained;
+  
+        if (
+          checkAbsent([
+            student.MinorDisciplinePaperObtained,
+           
+          ])
+        ) {
+          updateFields.MinorDisciplineTheoryStatus = "ABSENT";
+        }
+
+        if (
+          checkAbsent([
+            student.MinorDisciplineCiaObtained,
+          ])
+        ) {
+          updateFields.MinorDisciplineCiaStatus = "ABSENT";
+        }
+
+        if (
+          checkAbsent([
+            student.MinorDisciplinePracticalObtained,
+          ])
+        ) {
+          updateFields.MinorDisciplinePracticalStatus = "ABSENT";
+        }
+  
+        // ---- PUSH TO BULK ----
         bulkOps.push({
           updateOne: {
             filter: { _id: student._id },
             update: { $set: updateFields },
           },
         });
-      }
+  
+        // ---- PREPARE REPORT ROW ----
+        reportRows.push({
+          EnrolmentNumber: student.EnrolmentNumber,
+          RollNumber: student.RollNumber,
+          Major1TotalTheoryObtained: major1TheoryObtained,
+          Major1TotaTheorylMax: major1TheoryMax,
+          Major1TheoryStatus:
+            updateFields.MajorDiscipline1TheoryStatus === "ABSENT"
+              ? "ABSENT"
+              : isPass(major1TheoryObtained, major1TheoryMax)
+              ? "PASS"
+              : "FAIL",
+          Major1CiaObtained: student.MajorDiscipline1CiaObtained,
+          Major1CiaMax: student.MajorDiscipline1CiaMax,
+         Major1PracticalObtained:student.MajorDiscipline1PracticalObtained,
+         Major1PracticalMax: student.MajorDiscipline1PracticalMax,
+         MajorDiscipline1TotalObtained: updateFields.MajorDiscipline1TotalObtained,
+         MajorDiscipline1TotalMax: student.MajorDiscipline1TotalMax,
+         MajorDiscipline1Status: !isPass(major1TheoryObtained, major1TheoryMax)?"FAIL":
+         isPass(updateFields.MajorDiscipline1TotalObtained, student.MajorDiscipline1TotalMax)?"PASS":"FAIL",
 
+          
+         
+         
+         
+         
+         
+
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         Major2TotalTheoryObtained: major2TheoryObtained,
+
+          Major2TotaTheorylMax: major2TheoryMax,
+
+          Major2Status:
+            updateFields.MajorDiscipline2TheoryStatus === "ABSENT"
+              ? "ABSENT"
+              : isPass(major2TheoryObtained, major2TheoryMax)
+              ? "PASS"
+              : "FAIL",
+          MinorTheoryTotalObtained: student.MinorDisciplinePaperObtained,
+          MinorTheoryTotalMax: student.MinorDisciplinePaperMax,
+          MinorStatus:
+            updateFields.MinorDisciplineTheoryStatus === "ABSENT"
+              ? "ABSENT"
+              : isPass(student.MinorDisciplinePaperObtained, safeInt(student.MinorDisciplinePaperMax))
+              ? "PASS"
+              : "FAIL",
+        });
+      }
+  
+      // ========================
+      // EXECUTE BULK WRITE
+      // ========================
       if (bulkOps.length) {
         await collection.bulkWrite(bulkOps);
       }
-
-      const makeInt = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
-
-      const calc40Percent = (max) => Math.round(makeInt(max) * 0.4);
-
-      const isPass = (obtained, max) => makeInt(obtained) >= calc40Percent(max);
-
-      for (const student of candidates) {
-        // ======================
-        // MAJOR DISCIPLINE 1
-        // ======================
-
-        const major1TheoryPass = isPass(
-          student.MajorDiscipline1TheoryTotalObtained,
-          student.MajorDiscipline1TheoryTotalMax
-        );
-
-        const major1PracticalPass = isPass(
-          student.MajorDiscipline1PracticalObtained,
-          student.MajorDiscipline1PracticalMax
-        );
-
-        const major1TotalPass = isPass(
-          student.MajorDiscipline1TotalObtained,
-          student.MajorDiscipline1TotalMax
-        );
-
-        // ======================
-        // MAJOR DISCIPLINE 2
-        // ======================
-
-        const major2TheoryPass = isPass(
-          student.MajorDiscipline2TheoryTotalObtained,
-          student.MajorDiscipline2TheoryTotalMax
-        );
-
-        const major2PracticalPass = isPass(
-          student.MajorDiscipline2PracticalObtained,
-          student.MajorDiscipline2PracticalMax
-        );
-
-        const major2TotalPass = isPass(
-          student.MajorDiscipline2TotalObtained,
-          student.MajorDiscipline2TotalMax
-        );
-
-
-        // ======================
-        // FINAL DECISION
-        // ======================
-
-        const isMajor1Pass =
-          major1TheoryPass && major1PracticalPass && major1TotalPass;
-
-        const isMajor2Pass =
-          major2TheoryPass && major2PracticalPass && major2TotalPass;
-
-        console.log({
-          enrolment: student.EnrolmentNumber,
-          Major1: isMajor1Pass ? "PASS" : "FAIL",
-          Major2: isMajor2Pass ? "PASS" : "FAIL",
-        });
-      }
-
-      return res.json({
-        status: "Success",
-        message: "Result prepared successfully",
-      });
+  
+      // ========================
+      // GENERATE EXCEL REPORT
+      // ========================
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(reportRows);
+      XLSX.utils.book_append_sheet(workbook, worksheet, "ResultReport");
+  
+      const buffer = XLSX.write(workbook, { bookType: "xlsx", type: "buffer" });
+  
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=ResultReport.xlsx"
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+  
+      return res.send(buffer);
     } catch (error) {
       console.error("MakeResult Error:", error);
       return res.status(500).json({
@@ -2332,136 +1885,10 @@ class userController {
       await client.close();
     }
   };
+  
+  
 
-  // static MakeResult = async (req, res) => {
-  //   const client = new MongoClient(URL);
-
-  //   try {
-  //     const myobj = req.body;
-
-  //     if (!myobj?.sem?.DB_CL || !myobj?.session) {
-  //       return res.status(400).json({
-  //         status: "Fail",
-  //         message: "Invalid request data",
-  //       });
-  //     }
-
-  //     await client.connect();
-  //     const dataBase = client.db("NepUG");
-
-  //     const collection = dataBase.collection(`${myobj.sem.DB_CL}_RESULT`);
-
-  //     const candidates = await collection
-  //       .find({ Session: myobj.session })
-  //       .toArray();
-
-  //     if (!candidates.length) {
-  //       return res.status(404).json({
-  //         status: "Fail",
-  //         message: "No students found for this session",
-  //       });
-  //     }
-
-  //     const safeInt = (value) => {
-  //       const num = parseInt(value, 10);
-  //       return Number.isInteger(num) ? num : 0;
-  //     };
-
-  //     const bulkOps = [];
-
-  //     for (const student of candidates) {
-  //       const updateFields = {};
-  //       const insertFields = {};
-
-  //       //========================
-  //       //MAJOR 1
-  //       //=================
-
-  //       // Only Theory Total
-
-  //       insertFields.MajorDiscipline1TheoryTotalObtained =
-  //         safeInt(student?.MajorDiscipline1Paper1Obtained) +
-  //         safeInt(student?.MajorDiscipline1Paper2Obtained) +
-  //         safeInt(student?.MajorDiscipline1Paper3Obtained);
-
-  //       insertFields.MajorDiscipline1TheoryTotalMax =
-  //         safeInt(student?.MajorDiscipline1Paper1Max) +
-  //         safeInt(student?.MajorDiscipline1Paper2Max) +
-  //         safeInt(student?.MajorDiscipline1Paper3Max);
-
-  //       // Theory + CIA
-  //       updateFields.MajorDiscipline1TotalObtained =
-  //         safeInt(student?.MajorDiscipline1CiaObtained) +
-  //         safeInt(student?.MajorDiscipline1Paper1Obtained) +
-  //         safeInt(student?.MajorDiscipline1Paper2Obtained) +
-  //         safeInt(student?.MajorDiscipline1Paper3Obtained) +
-  //         safeInt(student?.MajorDiscipline1PracticalObtained);
-
-  //       //========================
-  //       //MAJOR 2
-  //       //=================
-  //       // Only Theory Total
-
-  //       insertFields.MajorDiscipline2TheoryTotalObtained =
-  //         safeInt(student?.MajorDiscipline2Paper1Obtained) +
-  //         safeInt(student?.MajorDiscipline2Paper2Obtained) +
-  //         safeInt(student?.MajorDiscipline2Paper3Obtained);
-
-  //       insertFields.MajorDiscipline2TheoryTotalMax =
-  //         safeInt(student?.MajorDiscipline2Paper1Max) +
-  //         safeInt(student?.MajorDiscipline2Paper2Max) +
-  //         safeInt(student?.MajorDiscipline2Paper3Max);
-
-  //       // Theory + CIA
-  //       updateFields.MajorDiscipline2TotalObtained =
-  //         safeInt(student.MajorDiscipline2CiaObtained) +
-  //         safeInt(student.MajorDiscipline2Paper1Obtained) +
-  //         safeInt(student.MajorDiscipline2Paper2Obtained) +
-  //         safeInt(student.MajorDiscipline2Paper3Obtained) +
-  //         safeInt(student.MajorDiscipline2PracticalObtained);
-
-  //       // Minor Discipline Total
-  //       updateFields.MinorDisciplineTotalObtained =
-  //         safeInt(student.MinorDisciplineCiaObtained) +
-  //         safeInt(student.MinorDisciplinePaperObtained) +
-  //         safeInt(student.MinorDisciplinePracticalObtained);
-
-  //       if (Object.keys(updateFields).length > 0) {
-  //         bulkOps.push({
-  //           updateOne: {
-  //             filter: { _id: student._id },
-  //             update: { $set: updateFields },
-  //           },
-  //         });
-  //       }
-  //       if(Object.keys(insertFields.length>0)){
-  //         bulkOps.push({
-  //           insertOne:{
-  //             filter: { _id: student._id },
-  //             document: insertFields
-  //           }
-  //         })
-  //       }
-  //     }
-
-  //     if (bulkOps.length) {
-  //       await collection.bulkWrite(bulkOps);
-  //     }
-
-  //     return res.json({
-  //       status: "Success",
-  //       message: "Result prepared successfully",
-  //     });
-  //   } catch (error) {
-  //     console.error("MakeResult Error:", error);
-  //     return res.status(500).json({
-  //       status: "Error",
-  //       message: "Internal Server Error",
-  //     });
-  //   } finally {
-  //     await client.close();
-  //   }
-  // };
+ 
 }
 
 export default userController;
