@@ -12,6 +12,7 @@ import transporter from "../config/emailconfig.js";
 import fs from "fs";
 import * as XLSX from "xlsx";
 import { url } from "inspector";
+import { stringify } from "querystring";
 
 class userController {
   static userRegistration = async (req, res) => {
@@ -1624,7 +1625,9 @@ class userController {
   
       await client.connect();
       const db = client.db("NepUG");
+      const database = client.db("NEP")
       const collection = db.collection(`${myobj.sem.DB_CL}_RESULT`);
+      const GradingSystem = await database.collection("GradeSystem").find({}).toArray()
   
       const candidates = await collection
         .find({ Session: myobj.session })
@@ -1645,6 +1648,13 @@ class userController {
       const checkAbsent = (arr) => arr.map(safeInt).every((m) => m === 0);
       const calc40Percent = (max) => Math.round(safeInt(max) * 0.4);
       const isPass = (obtained, max) => safeInt(obtained) >= calc40Percent(max);
+      const calculatePercentage = (obtained, max) => {
+        const o = safeInt(obtained);
+        const m = safeInt(max);
+      
+        if (m === 0) return 0; // avoid division by zero
+        return Math.round((o / m) * 100);
+      };
   
       const bulkOps = [];
       const reportRows = [];
@@ -1676,7 +1686,20 @@ class userController {
         updateFields.MajorDiscipline1TheoryTotalMax = major1TheoryMax;
         updateFields.MajorDiscipline1TotalObtained =
           major1TheoryObtained + major1Cia + major1Practical;
-  
+
+          //for grading: According to grading rules:- 
+          // Total Marks = CIA obtained + End Semester Marks
+          const Major1GradeMarksObtained = major1Cia + major1TheoryObtained
+          const Major1GradeMarksMax = safeInt(student.MajorDiscipline1CiaMax) + major1TheoryMax
+          const Major1GradePercentage = calculatePercentage(Major1GradeMarksObtained, Major1GradeMarksMax)
+
+          const Major1GradeAll = GradingSystem.find(
+            (grade) =>
+              Major1GradePercentage >= Number(grade.percentageMarksMin) &&
+            Major1GradePercentage < Number(grade.percentageMarksMax)
+          );
+
+  //Absent Checking
         if (
           checkAbsent([
             student.MajorDiscipline1Paper1Obtained,
@@ -1720,7 +1743,18 @@ class userController {
         updateFields.MajorDiscipline2TotalObtained =
           major2TheoryObtained + major2Cia + major2Practical;
 
+          //for grading: According to grading rules:- Total Marks = CIA obtained + End Semester Marks
+          const Major2GradeMarksObtained = major2Cia + major2TheoryObtained
+          const Major2GradeMarksMax = safeInt(student.MajorDiscipline2CiaMax) + major2TheoryMax
+          const Major2GradePercentage = calculatePercentage(Major2GradeMarksObtained, Major2GradeMarksMax)
 
+          const Major2GradeAll = GradingSystem.find(
+            (grade) =>
+              Major2GradePercentage >= Number(grade.percentageMarksMin) &&
+            Major2GradePercentage < Number(grade.percentageMarksMax)
+          );
+
+  //Absent Checking
 
         if (
           checkAbsent([
@@ -1754,6 +1788,20 @@ class userController {
           student.MinorDisciplinePracticalObtained,
         ]);
         updateFields.MinorDisciplineTotalObtained = minorTotalObtained;
+
+         //for grading: According to grading rules:- Total Marks = CIA obtained + End Semester Marks
+         const MinorGradeMarksObtained =  safeInt(student.MinorDisciplineCiaObtained) + safeInt(student.MinorDisciplinePaperObtained)
+         const MinorGradeMarksMax = safeInt(student.MinorDisciplineCiaMax) + safeInt(student.MinorDisciplinePaperMax)
+         const MinorGradePercentage = calculatePercentage(MinorGradeMarksObtained, MinorGradeMarksMax)
+
+         const MinorGradeAll = GradingSystem.find(
+           (grade) =>
+            MinorGradePercentage >= Number(grade.percentageMarksMin) &&
+           MinorGradePercentage < Number(grade.percentageMarksMax)
+         );
+
+
+         //Absent Check
   
         if (
           checkAbsent([
@@ -1808,36 +1856,38 @@ class userController {
          MajorDiscipline1TotalMax: student.MajorDiscipline1TotalMax,
          MajorDiscipline1Status: !isPass(major1TheoryObtained, major1TheoryMax)?"FAIL":
          isPass(updateFields.MajorDiscipline1TotalObtained, student.MajorDiscipline1TotalMax)?"PASS":"FAIL",
+         MajorDiscipline1Percentage: Major1GradePercentage,
+         MajorDiscipline1GradePoint: Major1GradeAll.gradePoint,
+         MajorDiscipline1LetterGrade: Major1GradeAll.letterGrade,
+         MajorDiscipline1Classisfication: Major1GradeAll.classisfication,
 
           
-         
-         
-         
-         
-         
-
-         
-         
-         
-         
-         
-         
-         
-         
-         
-         
-         
-         
          Major2TotalTheoryObtained: major2TheoryObtained,
-
           Major2TotaTheorylMax: major2TheoryMax,
-
           Major2Status:
-            updateFields.MajorDiscipline2TheoryStatus === "ABSENT"
-              ? "ABSENT"
-              : isPass(major2TheoryObtained, major2TheoryMax)
-              ? "PASS"
-              : "FAIL",
+          updateFields.MajorDiscipline2TheoryStatus === "ABSENT"
+          ? "ABSENT"
+          : isPass(major2TheoryObtained, major2TheoryMax)
+          ? "PASS"
+          : "FAIL",
+
+          Major2CiaObtained: student.MajorDiscipline2CiaObtained,
+          Major2CiaMax: student.MajorDiscipline2CiaMax,
+         Major2PracticalObtained:student.MajorDiscipline2PracticalObtained,
+         Major2PracticalMax: student.MajorDiscipline2PracticalMax,
+         MajorDiscipline2TotalObtained: updateFields.MajorDiscipline2TotalObtained,
+         MajorDiscipline2TotalMax: student.MajorDiscipline2TotalMax,
+         MajorDiscipline2Status: !isPass(major2TheoryObtained, major2TheoryMax)?"FAIL":
+         isPass(updateFields.MajorDiscipline2TotalObtained, student.MajorDiscipline2TotalMax)?"PASS":"FAIL",
+         MajorDiscipline2Percentage: Major2GradePercentage,
+         MajorDiscipline2GradePoint: Major2GradeAll.gradePoint,
+         MajorDiscipline2LetterGrade: Major2GradeAll.letterGrade,
+         MajorDiscipline2Classisfication: Major2GradeAll.classisfication,
+
+
+
+
+
           MinorTheoryTotalObtained: student.MinorDisciplinePaperObtained,
           MinorTheoryTotalMax: student.MinorDisciplinePaperMax,
           MinorStatus:
@@ -1846,6 +1896,10 @@ class userController {
               : isPass(student.MinorDisciplinePaperObtained, safeInt(student.MinorDisciplinePaperMax))
               ? "PASS"
               : "FAIL",
+        MinorPercentage: MinorGradePercentage,
+        MinorGradePoint: MinorGradeAll.gradePoint,
+        MinorLetterGrade: MinorGradeAll.letterGrade,
+        MinorClassisfication: MinorGradeAll.classisfication,
         });
       }
   
