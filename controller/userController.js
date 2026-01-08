@@ -881,6 +881,9 @@ class userController {
           continue;
         }
 
+        //Regular or Ex
+        const YearCat = row.cat === 1?"Regular Candidate": "Ex-Student"
+
         // INSERT CLEAN DATA
         recordsToInsert.push({
           Profile: {
@@ -908,7 +911,7 @@ class userController {
             Session: myobj.session,
             EnrolmentNumber: row.en,
             RollNumber: row.rn,
-            YearCategory: "Regular",
+            YearCategory: YearCat,
             //Discipline 1
             ...(disciplineMajor1?.DISCIPLINE && {
               MajorDiscipline1: disciplineMajor1.DISCIPLINE,
@@ -1608,7 +1611,7 @@ class userController {
     }
   };
 
- 
+  
 
   static MakeResult = async (req, res) => {
     const client = new MongoClient(URL);
@@ -1624,300 +1627,221 @@ class userController {
       }
   
       await client.connect();
-      const db = client.db("NepUG");
-      const database = client.db("NEP")
-      const collection = db.collection(`${myobj.sem.DB_CL}_RESULT`);
-      const GradingSystem = await database.collection("GradeSystem").find({}).toArray()
   
-      const candidates = await collection
+      const resultDB = client.db("NepUG");
+      const masterDB = client.db("NEP");
+  
+      const collection = resultDB.collection(
+        `${myobj.sem.DB_CL}_RESULT`
+      );
+  
+      const gradingSystem = await masterDB
+        .collection("GradeSystem")
+        .find({})
+        .toArray();
+  
+      const students = await collection
         .find({ Session: myobj.session })
         .toArray();
   
-      if (!candidates.length) {
+      if (!students.length) {
         return res.status(404).json({
           status: "Fail",
           message: "No students found for this session",
         });
       }
   
-      // ========================
+      // ======================
       // HELPER FUNCTIONS
-      // ========================
+      // ======================
       const safeInt = (v) => (v != null && !isNaN(v) ? Number(v) : 0);
-      const calculateTotal = (arr) => arr.map(safeInt).reduce((a, b) => a + b, 0);
-      const checkAbsent = (arr) => arr.map(safeInt).every((m) => m === 0);
-      const calc40Percent = (max) => Math.round(safeInt(max) * 0.4);
-      const isPass = (obtained, max) => safeInt(obtained) >= calc40Percent(max);
-      const calculatePercentage = (obtained, max) => {
-        const o = safeInt(obtained);
-        const m = safeInt(max);
-      
-        if (m === 0) return 0; // avoid division by zero
-        return Math.round((o / m) * 100);
-      };
   
+      const total = (arr) =>
+        arr.map(safeInt).reduce((a, b) => a + b, 0);
+  
+      const calc40 = (max) => Math.round(safeInt(max) * 0.4);
+  
+      const isPass = (obt, max) =>
+        safeInt(obt) >= calc40(max);
+  
+      const percent = (obt, max) =>
+        safeInt(max) === 0 ? 0 : Math.round((safeInt(obt) / safeInt(max)) * 100);
+  
+      const isAbsent = (arr) =>
+        arr.map(safeInt).every((v) => v === 0);
+  
+      const getGrade = (p) =>
+        gradingSystem.find(
+          (g) =>
+            p >= Number(g.percentageMarksMin) &&
+            p < Number(g.percentageMarksMax)
+        ) || null;
+  
+      // ======================
+      // BULK + REPORT
+      // ======================
       const bulkOps = [];
       const reportRows = [];
   
-      // ========================
-      // PROCESS EACH CANDIDATE
-      // ========================
-      for (const student of candidates) {
+      // ======================
+      // PROCESS STUDENTS
+      // ======================
+      for (const s of students) {
         const updateFields = {};
   
-        // ---- Major 1 ----
-        const major1TheoryObtained = calculateTotal([
-          student.MajorDiscipline1Paper1Obtained,
-          student.MajorDiscipline1Paper2Obtained,
-          student.MajorDiscipline1Paper3Obtained,
+        // ======================
+        // MAJOR 1
+        // ======================
+        const m1TheoryObt = total([
+          s.MajorDiscipline1Paper1Obtained,
+          s.MajorDiscipline1Paper2Obtained,
+          s.MajorDiscipline1Paper3Obtained,
         ]);
-        const major1TheoryMax = calculateTotal([
-          student.MajorDiscipline1Paper1Max,
-          student.MajorDiscipline1Paper2Max,
-          student.MajorDiscipline1Paper3Max,
-        ]);
-        const major1Cia = safeInt(student.MajorDiscipline1CiaObtained);
-        const major1Practical = safeInt(student.MajorDiscipline1PracticalObtained);
-
-
-
   
-        updateFields.MajorDiscipline1TheoryTotalObtained = major1TheoryObtained;
-        updateFields.MajorDiscipline1TheoryTotalMax = major1TheoryMax;
-        updateFields.MajorDiscipline1TotalObtained =
-          major1TheoryObtained + major1Cia + major1Practical;
-
-          //for grading: According to grading rules:- 
-          // Total Marks = CIA obtained + End Semester Marks
-          const Major1GradeMarksObtained = major1Cia + major1TheoryObtained
-          const Major1GradeMarksMax = safeInt(student.MajorDiscipline1CiaMax) + major1TheoryMax
-          const Major1GradePercentage = calculatePercentage(Major1GradeMarksObtained, Major1GradeMarksMax)
-
-          const Major1GradeAll = GradingSystem.find(
-            (grade) =>
-              Major1GradePercentage >= Number(grade.percentageMarksMin) &&
-            Major1GradePercentage < Number(grade.percentageMarksMax)
-          );
-
-  //Absent Checking
+        const m1TheoryMax = total([
+          s.MajorDiscipline1Paper1Max,
+          s.MajorDiscipline1Paper2Max,
+          s.MajorDiscipline1Paper3Max,
+        ]);
+  
+        const m1Cia = safeInt(s.MajorDiscipline1CiaObtained);
+        const m1Practical = safeInt(s.MajorDiscipline1PracticalObtained);
+  
+        const m1TotalObt = m1TheoryObt + m1Cia + m1Practical;
+  
+        const m1GradeObt = m1TheoryObt + m1Cia;
+        const m1GradeMax = m1TheoryMax + safeInt(s.MajorDiscipline1CiaMax);
+  
+        const m1Perc = percent(m1GradeObt, m1GradeMax);
+        const m1Grade = getGrade(m1Perc);
+  
+        const m1TheoryPass = isPass(m1TheoryObt, m1TheoryMax);
+        const m1OverallPass =
+          m1TheoryPass && isPass(m1TotalObt, s.MajorDiscipline1TotalMax);
+  
         if (
-          checkAbsent([
-            student.MajorDiscipline1Paper1Obtained,
-            student.MajorDiscipline1Paper2Obtained,
-            student.MajorDiscipline1Paper3Obtained,
+          isAbsent([
+            s.MajorDiscipline1Paper1Obtained,
+            s.MajorDiscipline1Paper2Obtained,
+            s.MajorDiscipline1Paper3Obtained,
           ])
-        ) {
+        )
           updateFields.MajorDiscipline1TheoryStatus = "ABSENT";
-        }
-        if (
-          checkAbsent([
-            student.MajorDiscipline1CiaObtained,
-          ])
-        ) {
+  
+        if (isAbsent([s.MajorDiscipline1CiaObtained]))
           updateFields.MajorDiscipline1CiaStatus = "ABSENT";
-        }
-        if (
-          checkAbsent([
-            student.MajorDiscipline1PracticalObtained,
-          ])
-        ) {
+  
+        if (isAbsent([s.MajorDiscipline1PracticalObtained]))
           updateFields.MajorDiscipline1PracticalStatus = "ABSENT";
-        }
   
-        // ---- Major 2 ----
-        const major2TheoryObtained = calculateTotal([
-          student.MajorDiscipline2Paper1Obtained,
-          student.MajorDiscipline2Paper2Obtained,
-          student.MajorDiscipline2Paper3Obtained,
+        // ======================
+        // MAJOR 2
+        // ======================
+        const m2TheoryObt = total([
+          s.MajorDiscipline2Paper1Obtained,
+          s.MajorDiscipline2Paper2Obtained,
+          s.MajorDiscipline2Paper3Obtained,
         ]);
-        const major2TheoryMax = calculateTotal([
-          student.MajorDiscipline2Paper1Max,
-          student.MajorDiscipline2Paper2Max,
-          student.MajorDiscipline2Paper3Max,
+  
+        const m2TheoryMax = total([
+          s.MajorDiscipline2Paper1Max,
+          s.MajorDiscipline2Paper2Max,
+          s.MajorDiscipline2Paper3Max,
         ]);
-        const major2Cia = safeInt(student.MajorDiscipline2CiaObtained);
-        const major2Practical = safeInt(student.MajorDiscipline2PracticalObtained);
   
-        updateFields.MajorDiscipline2TheoryTotalObtained = major2TheoryObtained;
-        updateFields.MajorDiscipline2TheoryTotalMax = major2TheoryMax;
-        updateFields.MajorDiscipline2TotalObtained =
-          major2TheoryObtained + major2Cia + major2Practical;
-
-          //for grading: According to grading rules:- Total Marks = CIA obtained + End Semester Marks
-          const Major2GradeMarksObtained = major2Cia + major2TheoryObtained
-          const Major2GradeMarksMax = safeInt(student.MajorDiscipline2CiaMax) + major2TheoryMax
-          const Major2GradePercentage = calculatePercentage(Major2GradeMarksObtained, Major2GradeMarksMax)
-
-          const Major2GradeAll = GradingSystem.find(
-            (grade) =>
-              Major2GradePercentage >= Number(grade.percentageMarksMin) &&
-            Major2GradePercentage < Number(grade.percentageMarksMax)
-          );
-
-  //Absent Checking
-
-        if (
-          checkAbsent([
-            student.MajorDiscipline2Paper1Obtained,
-            student.MajorDiscipline2Paper2Obtained,
-            student.MajorDiscipline2Paper3Obtained,
-          ])
-        ) {
-          updateFields.MajorDiscipline2TheoryStatus = "ABSENT";
-        }
-        if (
-          checkAbsent([
-            student.MajorDiscipline2CiaObtained,
-          ])
-        ) {
-          updateFields.MajorDiscipline2CiaStatus = "ABSENT";
-        }
-        if (
-          checkAbsent([
-            student.MajorDiscipline2PracticalObtained,
-          ])
-        ) {
-          updateFields.MajorDiscipline2PracticalStatus = "ABSENT";
-        }
-
+        const m2Cia = safeInt(s.MajorDiscipline2CiaObtained);
+        const m2Practical = safeInt(s.MajorDiscipline2PracticalObtained);
   
-        // ---- Minor ----
-        const minorTotalObtained = calculateTotal([
-          student.MinorDisciplinePaperObtained,
-          student.MinorDisciplineCiaObtained,
-          student.MinorDisciplinePracticalObtained,
+        const m2TotalObt = m2TheoryObt + m2Cia + m2Practical;
+  
+        const m2GradeObt = m2TheoryObt + m2Cia;
+        const m2GradeMax = m2TheoryMax + safeInt(s.MajorDiscipline2CiaMax);
+  
+        const m2Perc = percent(m2GradeObt, m2GradeMax);
+        const m2Grade = getGrade(m2Perc);
+  
+        const m2TheoryPass = isPass(m2TheoryObt, m2TheoryMax);
+        const m2OverallPass =
+          m2TheoryPass && isPass(m2TotalObt, s.MajorDiscipline2TotalMax);
+  
+        // ======================
+        // MINOR
+        // ======================
+        const minorObt = total([
+          s.MinorDisciplinePaperObtained,
+          s.MinorDisciplineCiaObtained,
+          s.MinorDisciplinePracticalObtained,
         ]);
-        updateFields.MinorDisciplineTotalObtained = minorTotalObtained;
-
-         //for grading: According to grading rules:- Total Marks = CIA obtained + End Semester Marks
-         const MinorGradeMarksObtained =  safeInt(student.MinorDisciplineCiaObtained) + safeInt(student.MinorDisciplinePaperObtained)
-         const MinorGradeMarksMax = safeInt(student.MinorDisciplineCiaMax) + safeInt(student.MinorDisciplinePaperMax)
-         const MinorGradePercentage = calculatePercentage(MinorGradeMarksObtained, MinorGradeMarksMax)
-
-         const MinorGradeAll = GradingSystem.find(
-           (grade) =>
-            MinorGradePercentage >= Number(grade.percentageMarksMin) &&
-           MinorGradePercentage < Number(grade.percentageMarksMax)
-         );
-
-
-         //Absent Check
   
-        if (
-          checkAbsent([
-            student.MinorDisciplinePaperObtained,
-           
-          ])
-        ) {
-          updateFields.MinorDisciplineTheoryStatus = "ABSENT";
-        }
-
-        if (
-          checkAbsent([
-            student.MinorDisciplineCiaObtained,
-          ])
-        ) {
-          updateFields.MinorDisciplineCiaStatus = "ABSENT";
-        }
-
-        if (
-          checkAbsent([
-            student.MinorDisciplinePracticalObtained,
-          ])
-        ) {
-          updateFields.MinorDisciplinePracticalStatus = "ABSENT";
-        }
+        const minorMax = total([
+          s.MinorDisciplinePaperMax,
+          s.MinorDisciplineCiaMax,
+          s.MinorDisciplinePracticalMax,
+        ]);
   
-        // ---- PUSH TO BULK ----
+        const minorPerc = percent(minorObt, minorMax);
+        const minorGrade = getGrade(minorPerc);
+  
+        const minorPass =
+          isPass(s.MinorDisciplinePaperObtained, s.MinorDisciplinePaperMax) &&
+          isPass(minorObt, minorMax);
+  
+        // ======================
+        // FINAL RESULT OBJECT
+        // ======================
+        const finalResult = {
+          MajorDiscipline1TotalObtained: m1TotalObt,
+          MajorDiscipline1Percentage: m1Perc,
+          MajorDiscipline1GradePoint: m1Grade?.gradePoint || 0,
+          MajorDiscipline1LetterGrade:
+            m1OverallPass ? m1Grade?.letterGrade || "F" : "F",
+          MajorDiscipline1Classisfication:
+            m1OverallPass ? m1Grade?.classisfication || "FAIL" : "FAIL",
+  
+          MajorDiscipline2TotalObtained: m2TotalObt,
+          MajorDiscipline2Percentage: m2Perc,
+          MajorDiscipline2GradePoint: m2Grade?.gradePoint || 0,
+          MajorDiscipline2LetterGrade:
+            m2OverallPass ? m2Grade?.letterGrade || "F" : "F",
+          MajorDiscipline2Classisfication:
+            m2OverallPass ? m2Grade?.classisfication || "FAIL" : "FAIL",
+  
+          MinorDisciplineTotalObtained: minorObt,
+          MinorPercentage: minorPerc,
+          MinorGradePoint: minorGrade?.gradePoint || 0,
+          MinorDisciplineLetterGrade:
+            minorPass ? minorGrade?.letterGrade || "F" : "F",
+          MinorDisciplineClassisfication:
+            minorPass ? minorGrade?.classisfication || "FAIL" : "FAIL",
+        };
+  
         bulkOps.push({
           updateOne: {
-            filter: { _id: student._id },
-            update: { $set: updateFields },
+            filter: { _id: s._id },
+            update: { $set: { ...updateFields, ...finalResult } },
           },
         });
   
-        // ---- PREPARE REPORT ROW ----
         reportRows.push({
-          EnrolmentNumber: student.EnrolmentNumber,
-          RollNumber: student.RollNumber,
-          Major1TotalTheoryObtained: major1TheoryObtained,
-          Major1TotaTheorylMax: major1TheoryMax,
-          Major1TheoryStatus:
-            updateFields.MajorDiscipline1TheoryStatus === "ABSENT"
-              ? "ABSENT"
-              : isPass(major1TheoryObtained, major1TheoryMax)
-              ? "PASS"
-              : "FAIL",
-          Major1CiaObtained: student.MajorDiscipline1CiaObtained,
-          Major1CiaMax: student.MajorDiscipline1CiaMax,
-         Major1PracticalObtained:student.MajorDiscipline1PracticalObtained,
-         Major1PracticalMax: student.MajorDiscipline1PracticalMax,
-         MajorDiscipline1TotalObtained: updateFields.MajorDiscipline1TotalObtained,
-         MajorDiscipline1TotalMax: student.MajorDiscipline1TotalMax,
-         MajorDiscipline1Status: !isPass(major1TheoryObtained, major1TheoryMax)?"FAIL":
-         isPass(updateFields.MajorDiscipline1TotalObtained, student.MajorDiscipline1TotalMax)?"PASS":"FAIL",
-         MajorDiscipline1Percentage: Major1GradePercentage,
-         MajorDiscipline1GradePoint: Major1GradeAll.gradePoint,
-         MajorDiscipline1LetterGrade: Major1GradeAll.letterGrade,
-         MajorDiscipline1Classisfication: Major1GradeAll.classisfication,
-
-          
-         Major2TotalTheoryObtained: major2TheoryObtained,
-          Major2TotaTheorylMax: major2TheoryMax,
-          Major2Status:
-          updateFields.MajorDiscipline2TheoryStatus === "ABSENT"
-          ? "ABSENT"
-          : isPass(major2TheoryObtained, major2TheoryMax)
-          ? "PASS"
-          : "FAIL",
-
-          Major2CiaObtained: student.MajorDiscipline2CiaObtained,
-          Major2CiaMax: student.MajorDiscipline2CiaMax,
-         Major2PracticalObtained:student.MajorDiscipline2PracticalObtained,
-         Major2PracticalMax: student.MajorDiscipline2PracticalMax,
-         MajorDiscipline2TotalObtained: updateFields.MajorDiscipline2TotalObtained,
-         MajorDiscipline2TotalMax: student.MajorDiscipline2TotalMax,
-         MajorDiscipline2Status: !isPass(major2TheoryObtained, major2TheoryMax)?"FAIL":
-         isPass(updateFields.MajorDiscipline2TotalObtained, student.MajorDiscipline2TotalMax)?"PASS":"FAIL",
-         MajorDiscipline2Percentage: Major2GradePercentage,
-         MajorDiscipline2GradePoint: Major2GradeAll.gradePoint,
-         MajorDiscipline2LetterGrade: Major2GradeAll.letterGrade,
-         MajorDiscipline2Classisfication: Major2GradeAll.classisfication,
-
-
-
-
-
-          MinorTheoryTotalObtained: student.MinorDisciplinePaperObtained,
-          MinorTheoryTotalMax: student.MinorDisciplinePaperMax,
-          MinorStatus:
-            updateFields.MinorDisciplineTheoryStatus === "ABSENT"
-              ? "ABSENT"
-              : isPass(student.MinorDisciplinePaperObtained, safeInt(student.MinorDisciplinePaperMax))
-              ? "PASS"
-              : "FAIL",
-        MinorPercentage: MinorGradePercentage,
-        MinorGradePoint: MinorGradeAll.gradePoint,
-        MinorLetterGrade: MinorGradeAll.letterGrade,
-        MinorClassisfication: MinorGradeAll.classisfication,
+          EnrolmentNumber: s.EnrolmentNumber,
+          RollNumber: s.RollNumber,
+          ...finalResult,
         });
       }
   
-      // ========================
-      // EXECUTE BULK WRITE
-      // ========================
-      if (bulkOps.length) {
-        await collection.bulkWrite(bulkOps);
-      }
+      if (bulkOps.length) await collection.bulkWrite(bulkOps);
   
-      // ========================
-      // GENERATE EXCEL REPORT
-      // ========================
+      // ======================
+      // EXCEL EXPORT
+      // ======================
       const workbook = XLSX.utils.book_new();
       const worksheet = XLSX.utils.json_to_sheet(reportRows);
       XLSX.utils.book_append_sheet(workbook, worksheet, "ResultReport");
   
-      const buffer = XLSX.write(workbook, { bookType: "xlsx", type: "buffer" });
+      const buffer = XLSX.write(workbook, {
+        bookType: "xlsx",
+        type: "buffer",
+      });
   
       res.setHeader(
         "Content-Disposition",
@@ -1929,8 +1853,8 @@ class userController {
       );
   
       return res.send(buffer);
-    } catch (error) {
-      console.error("MakeResult Error:", error);
+    } catch (err) {
+      console.error("MakeResult Error:", err);
       return res.status(500).json({
         status: "Error",
         message: "Internal Server Error",
@@ -1940,9 +1864,6 @@ class userController {
     }
   };
   
-  
-
- 
 }
 
 export default userController;
