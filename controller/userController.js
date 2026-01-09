@@ -1763,6 +1763,21 @@ class userController {
         const m2TheoryPass = isPass(m2TheoryObt, m2TheoryMax);
         const m2OverallPass =
           m2TheoryPass && isPass(m2TotalObt, s.MajorDiscipline2TotalMax);
+
+          if (
+            isAbsent([
+              s.MajorDiscipline2Paper1Obtained,
+              s.MajorDiscipline2Paper2Obtained,
+              s.MajorDiscipline2Paper3Obtained,
+            ])
+          )
+            updateFields.MajorDiscipline2TheoryStatus = "ABSENT";
+    
+          if (isAbsent([s.MajorDiscipline2CiaObtained]))
+            updateFields.MajorDiscipline2CiaStatus = "ABSENT";
+    
+          if (isAbsent([s.MajorDiscipline2PracticalObtained]))
+            updateFields.MajorDiscipline2PracticalStatus = "ABSENT";
   
         // ======================
         // MINOR
@@ -1785,6 +1800,30 @@ class userController {
         const minorPass =
           isPass(s.MinorDisciplinePaperObtained, s.MinorDisciplinePaperMax) &&
           isPass(minorObt, minorMax);
+
+          if (
+            isAbsent([
+              s.MinorDisciplinePaperObtained
+            ])
+          )
+            updateFields.MinorDisciplineTheoryStatus = "ABSENT";
+    
+          if (isAbsent([s.MinorDisciplineCiaObtained]))
+            updateFields.MinorDisciplineCiaStatus = "ABSENT";
+    
+          if (isAbsent([s.MinorDisciplinePracticalObtained]))
+            updateFields.MinorDisciplinePracticalStatus = "ABSENT";
+
+        // ===========================
+        // DETENTION RULES FOR RESULT
+        // ===========================
+
+
+
+
+
+
+
   
         // ======================
         // FINAL RESULT OBJECT
