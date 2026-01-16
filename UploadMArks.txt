@@ -1,0 +1,321 @@
+static UploadMarks = async (req, res) => {
+    if (!req.file) {
+      return res.status(400).send({
+        status: "Fail",
+        message: "Excel file is required",
+      });
+    }
+
+    const client = new MongoClient(URL);
+
+    try {
+      // =========================
+      // READ EXCEL
+      // =========================
+      const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(sheet);
+
+      if (!data.length) {
+        return res.send({ status: "Fail", message: "Excel file is empty" });
+      }
+
+      // =========================
+      // VALIDATE HEADERS
+      // =========================
+      const REQUIRED_COLUMNS = ["rn", "sb", "pa", "en", "cat", "mrk11"];
+      const excelColumns = Object.keys(data[0]);
+
+      const missingColumns = REQUIRED_COLUMNS.filter(
+        (c) => !excelColumns.includes(c)
+      );
+
+      if (missingColumns.length) {
+        return res.send({
+          status: "Fail",
+          message: "Invalid Excel format",
+          missingColumns,
+        });
+      }
+
+      await client.connect();
+
+      const myobj = req.body;
+
+      const resultCol = client.db("NepUG").collection(myobj.DB_CL + "_RESULT");
+
+      const sessionCandidates = await resultCol
+        .find({ Session: myobj.session })
+        .toArray();
+
+      const nepDB = client.db("NEP");
+
+      const reportRows = [];
+      const bulkOps = [];
+
+      // =========================
+      // HELPER FUNCTION
+      // =========================
+      const updateIfValid = (
+        candidate,
+        updateFields,
+        report,
+        paperMatch,
+        obtainedField,
+        maxField,
+        marks
+      ) => {
+        if (
+          paperMatch &&
+          (candidate[obtainedField] === "" || candidate[obtainedField] == null)
+        ) {
+          if (marks > candidate[maxField]) {
+            report.Reason = "Marks greater than maximum";
+            return false;
+          }
+          updateFields[obtainedField] = marks;
+          return true;
+        }
+        return null;
+      };
+
+      // =========================
+      // PROCESS EACH ROW
+      // =========================
+      for (const [index, dt] of data.entries()) {
+        const excelRow = index + 2;
+        const isCIA = Number(dt.pa) === 7;
+
+        const report = {
+          row: excelRow,
+          RollNumber: dt.rn,
+          EnrolmentNumber: dt.en,
+          Discipline: "",
+          Paper: isCIA ? "CIA" : "",
+          Marks: dt.mrk11,
+          Status: "FAILED",
+          Reason: "",
+        };
+
+        const candidate = sessionCandidates.find(
+          (c) =>
+            String(c.EnrolmentNumber).trim() === String(dt.en).trim() &&
+            String(c.RollNumber).trim() === String(dt.rn).trim()
+        );
+
+        if (!candidate) {
+          report.Reason = "Candidate not found";
+          reportRows.push(report);
+          continue;
+        }
+
+        const discipline = await nepDB
+          .collection("DiciplineDetails")
+          .findOne({ Number_Code: parseInt(dt.sb) });
+
+        const paper = !isCIA
+          ? await nepDB.collection("PaperDetails").findOne({
+              DISCIPLINE: discipline?.DISCIPLINE?.trim(),
+              PaperCode: parseInt(dt.pa),
+            })
+          : null;
+
+        if (!discipline || (!paper && !isCIA)) {
+          report.Reason = "Discipline / Paper not found";
+          reportRows.push(report);
+          continue;
+        }
+
+        const disciplineName = discipline.DISCIPLINE.trim();
+        const paperName = paper?.COURSE_NAME?.trim();
+
+        report.Discipline = disciplineName;
+        if (!isCIA) report.Paper = paperName;
+
+        const isMajor1 = candidate.MajorDiscipline1 === disciplineName;
+        const isMajor2 = candidate.MajorDiscipline2 === disciplineName;
+        const isMinor = candidate.MinorDiscipline === disciplineName;
+
+        if (!isMajor1 && !isMajor2 && !isMinor) {
+          report.Reason = "Discipline not linked to candidate";
+          reportRows.push(report);
+          continue;
+        }
+
+        const updateFields = {};
+        let updated = false;
+
+        // =========================
+        // MAJOR 1
+        // =========================
+        if (isMajor1) {
+          if (isCIA) {
+            updated ||= updateIfValid(
+              candidate,
+              updateFields,
+              report,
+              true,
+              "MajorDiscipline1CiaObtained",
+              "MajorDiscipline1CiaMax",
+              dt.mrk11
+            );
+          } else {
+            updated ||= updateIfValid(
+              candidate,
+              updateFields,
+              report,
+              candidate.MajorDiscipline1Paper1 === paperName,
+              "MajorDiscipline1Paper1Obtained",
+              "MajorDiscipline1Paper1Max",
+              dt.mrk11
+            );
+            updated ||= updateIfValid(
+              candidate,
+              updateFields,
+              report,
+              candidate.MajorDiscipline1Paper2 === paperName,
+              "MajorDiscipline1Paper2Obtained",
+              "MajorDiscipline1Paper2Max",
+              dt.mrk11
+            );
+            updated ||= updateIfValid(
+              candidate,
+              updateFields,
+              report,
+              candidate.MajorDiscipline1Paper3 === paperName,
+              "MajorDiscipline1Paper3Obtained",
+              "MajorDiscipline1Paper3Max",
+              dt.mrk11
+            );
+          }
+        }
+
+        // =========================
+        // MAJOR 2
+        // =========================
+        if (isMajor2) {
+          if (isCIA) {
+            updated ||= updateIfValid(
+              candidate,
+              updateFields,
+              report,
+              true,
+              "MajorDiscipline2CiaObtained",
+              "MajorDiscipline2CiaMax",
+              dt.mrk11
+            );
+          } else {
+            updated ||= updateIfValid(
+              candidate,
+              updateFields,
+              report,
+              candidate.MajorDiscipline2Paper1 === paperName,
+              "MajorDiscipline2Paper1Obtained",
+              "MajorDiscipline2Paper1Max",
+              dt.mrk11
+            );
+            updated ||= updateIfValid(
+              candidate,
+              updateFields,
+              report,
+              candidate.MajorDiscipline2Paper2 === paperName,
+              "MajorDiscipline2Paper2Obtained",
+              "MajorDiscipline2Paper2Max",
+              dt.mrk11
+            );
+            updated ||= updateIfValid(
+              candidate,
+              updateFields,
+              report,
+              candidate.MajorDiscipline2Paper3 === paperName,
+              "MajorDiscipline2Paper3Obtained",
+              "MajorDiscipline2Paper3Max",
+              dt.mrk11
+            );
+          }
+        }
+
+        // =========================
+        // MINOR
+        // =========================
+        if (isMinor) {
+          if (isCIA) {
+            updated ||= updateIfValid(
+              candidate,
+              updateFields,
+              report,
+              true,
+              "MinorDisciplineCiaObtained",
+              "MinorDisciplineCiaMax",
+              dt.mrk11
+            );
+          } else {
+            updated ||= updateIfValid(
+              candidate,
+              updateFields,
+              report,
+              candidate.MinorDisciplinePaper === paperName,
+              "MinorDisciplinePaperObtained",
+              "MinorDisciplinePaperMax",
+              dt.mrk11
+            );
+          }
+        }
+
+        if (!updated) {
+          report.Reason = "Paper not linked or marks already uploaded";
+          reportRows.push(report);
+          continue;
+        }
+
+        bulkOps.push({
+          updateOne: {
+            filter: { _id: candidate._id },
+            update: { $set: updateFields },
+          },
+        });
+
+        report.Status = "UPDATED";
+        report.Reason = "Marks uploaded successfully";
+        reportRows.push(report);
+      }
+
+      // =========================
+      // BULK WRITE
+      // =========================
+      if (bulkOps.length) {
+        await resultCol.bulkWrite(bulkOps);
+      }
+
+      // =========================
+      // DOWNLOAD REPORT
+      // =========================
+      const reportSheet = XLSX.utils.json_to_sheet(reportRows);
+      const reportBook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(reportBook, reportSheet, "Upload Report");
+
+      const buffer = XLSX.write(reportBook, {
+        bookType: "xlsx",
+        type: "buffer",
+      });
+
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=MarksUploadReport.xlsx"
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      return res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).send({
+        status: "Fail",
+        message: "Internal server error",
+      });
+    } finally {
+      await client.close();
+    }
+  };
