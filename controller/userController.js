@@ -882,7 +882,8 @@ class userController {
             });
 
           program = await CoursesDB.collection("COURSES").findOne({
-            CourseNameCode: row.cc,
+            PRG_CODE: row.PRG_CODE,
+            CourseNameCode: parseInt(row.cc),
             TYPE: "NEP",
           });
 
@@ -908,6 +909,7 @@ class userController {
           // INSERT CLEAN DATA
           recordsToInsert.push({
             Profile: {
+              PRG_CODE: PRG_CODE,
               Session: myobj.session,
               FormNumber: row.fn,
               CuetRollNumber: row.trn,
@@ -929,6 +931,7 @@ class userController {
             },
 
             Result: {
+              PRG_CODE: PRG_CODE,
               Session: myobj.session,
               EnrolmentNumber: row.en,
               RollNumber: row.rn,
@@ -1210,6 +1213,7 @@ class userController {
 
             //Transcript
             TS: {
+              PRG_CODE: PRG_CODE,
               DB_CL: program.DB_CL + "1",
               Session: myobj.session,
               EnrolmentNumber: row.en,
@@ -1316,7 +1320,8 @@ class userController {
           // console.log("Paper", paperMajorDiscipline1)
 
           program = await CoursesDB.collection("COURSES").findOne({
-            CourseNameCode: row.cc,
+            PRG_CODE: row.PRG_CODE,
+            CourseNameCode: parseInt(row.cc),
             TYPE: "NEP",
           });
 
@@ -1342,6 +1347,7 @@ class userController {
           // INSERT CLEAN DATA
           recordsToInsert.push({
             Profile: {
+              PRG_CODE: PRG_CODE,
               Session: myobj.session,
               FormNumber: row.fn,
               CuetRollNumber: row.trn,
@@ -1363,6 +1369,7 @@ class userController {
             },
 
             Result: {
+              PRG_CODE: PRG_CODE,
               Session: myobj.session,
               EnrolmentNumber: row.en,
               RollNumber: row.rn,
@@ -1599,6 +1606,7 @@ class userController {
 
             //Transcript
             TS: {
+              PRG_CODE: PRG_CODE,
               DB_CL: program.DB_CL + "1",
               Session: myobj.session,
               EnrolmentNumber: row.en,
@@ -2124,14 +2132,33 @@ class userController {
           ? 0
           : Math.round((safeInt(obt) / safeInt(max)) * 100);
 
-      const isAbsent = (arr) => arr.map(safeInt).every((v) => v === 0);
+      // const isAbsent = (arr) => arr.map(safeInt).every((v) => v === 0);
 
-      const getGrade = (p) =>
-        gradingSystem.find(
-          (g) =>
-            p >= Number(g.percentageMarksMin) &&
-            p < Number(g.percentageMarksMax)
-        ) || null;
+      const isAbsent = (arr) =>
+        arr.every((v) => v === "AA" || safeInt(v) === 0);
+
+      const getGrade = (p) => {
+
+        if (p === "A") {
+          return (
+            gradingSystem.find(
+              (g) =>
+                g.percentageMarksMin === "A" &&
+                g.percentageMarksMax === "A"
+            ) || null
+          );
+        }else {
+      
+        return (
+          gradingSystem.find(
+            (g) =>
+              p >= Number(g.percentageMarksMin) &&
+              p < Number(g.percentageMarksMax)
+          ) || null
+        );
+      }
+      };
+      
 
       // ======================
       // BULK + REPORT
@@ -2144,15 +2171,18 @@ class userController {
       // ======================
       if (myobj.PRG === "PRE008") {
         for (const s of students) {
-          const updateFields = {};
+          // const updateFields = {};
 
           // ======================
-          // MAJOR
+          // MAJOR 1
           // ======================
 
-          const m1TheoryObt = total([s.MajorDiscipline1Paper1Obtained]);
+          const m1TheoryObt = safeInt(s.MajorDiscipline1Paper1Obtained);
 
-          const m1TheoryMax = total([s.MajorDiscipline1Paper1Max]);
+          const m1TheoryMax = safeInt(s.MajorDiscipline1Paper1Max);
+
+          const m1TheoryPass = isPass(m1TheoryObt, m1TheoryMax);
+
 
           const m1Cia = safeInt(s.MajorDiscipline1CiaObtained);
 
@@ -2160,26 +2190,35 @@ class userController {
 
           const m1GradeObt = m1TheoryObt + m1Cia;
           const m1GradeMax = m1TheoryMax + safeInt(s.MajorDiscipline1CiaMax);
+          
+          let m1Grade
+          let m1Perc
 
-          const m1Perc = percent(m1GradeObt, m1GradeMax);
-          const m1Grade = getGrade(m1Perc);
+          if (isAbsent([s.MajorDiscipline1Paper1Obtained])){
+            m1Grade = getGrade('A')
+            m1Perc = 0;
+          }else{
+            m1Perc = m1TheoryPass ? percent(m1GradeObt, m1GradeMax): 0 ;
+            m1Grade = getGrade(m1Perc)
+          }
 
-          const m1TheoryPass = isPass(m1TheoryObt, m1TheoryMax);
+          const Ci1 = safeInt(s.MajorDiscipline1TotalCreditMax);
+          const Gi1 = safeInt(m1Grade?.gradePoint ?? 0);
+
+          const Cps1 = Ci1 * Gi1;
+
           const m1OverallPass =
             m1TheoryPass && isPass(m1TotalObt, s.MajorDiscipline1TotalMax);
-
-          if (isAbsent([s.MajorDiscipline1Paper1Obtained]))
-            updateFields.MajorDiscipline1TheoryStatus = "ABSENT";
-
-          if (isAbsent([s.MajorDiscipline1CiaObtained]))
-            updateFields.MajorDiscipline1CiaStatus = "ABSENT";
 
           // ======================
           // MAJOR 2
           // ======================
-          const m2TheoryObt = total([s.MajorDiscipline2Paper1Obtained]);
 
-          const m2TheoryMax = total([s.MajorDiscipline2Paper1Max]);
+          const m2TheoryObt = safeInt(s.MajorDiscipline2Paper1Obtained);
+
+          const m2TheoryMax = safeInt(s.MajorDiscipline2Paper1Max);
+
+          const m2TheoryPass = isPass(m2TheoryObt, m2TheoryMax);
 
           const m2Cia = safeInt(s.MajorDiscipline2CiaObtained);
 
@@ -2188,25 +2227,33 @@ class userController {
           const m2GradeObt = m2TheoryObt + m2Cia;
           const m2GradeMax = m2TheoryMax + safeInt(s.MajorDiscipline2CiaMax);
 
-          const m2Perc = percent(m2GradeObt, m2GradeMax);
-          const m2Grade = getGrade(m2Perc);
+          let m2Grade
+          let m2Perc
 
-          const m2TheoryPass = isPass(m2TheoryObt, m2TheoryMax);
+          if (isAbsent([s.MajorDiscipline2Paper1Obtained])){
+            m2Grade = getGrade('A')
+            m2Perc = 0;
+          }else{
+            m2Perc = m2TheoryPass ? percent(m2GradeObt, m2GradeMax): 0 ;
+            m2Grade = getGrade(m2Perc)
+          }
+
+          const Ci2 = safeInt(s.MajorDiscipline2TotalCreditMax);
+          const Gi2 = safeInt(m2Grade?.gradePoint ?? 0);
+
+          const Cps2 = Ci2 * Gi2;
+
           const m2OverallPass =
             m2TheoryPass && isPass(m2TotalObt, s.MajorDiscipline2TotalMax);
 
-          if (isAbsent([s.MajorDiscipline2Paper1Obtained]))
-            updateFields.MajorDiscipline2TheoryStatus = "ABSENT";
-
-          if (isAbsent([s.MajorDiscipline2CiaObtained]))
-            updateFields.MajorDiscipline2CiaStatus = "ABSENT";
-
           // ======================
-          // MAJOR 2
+          // MAJOR 3
           // ======================
           const m3TheoryObt = safeInt(s.MajorDiscipline3Paper1Obtained);
 
           const m3TheoryMax = safeInt(s.MajorDiscipline3Paper1Max);
+
+          const m3TheoryPass = isPass(m3TheoryObt, m3TheoryMax);
 
           const m3Cia = safeInt(s.MajorDiscipline3CiaObtained);
           const m3TotalObt = m3TheoryObt + m3Cia;
@@ -2214,172 +2261,208 @@ class userController {
           const m3GradeObt = m3TheoryObt + m3Cia;
           const m3GradeMax = m3TheoryMax + safeInt(s.MajorDiscipline3CiaMax);
 
-          const m3Perc = percent(m3GradeObt, m3GradeMax);
-          const m3Grade = getGrade(m3Perc);
+          let m3Grade
+          let m3Perc
 
-          const m3TheoryPass = isPass(m3TheoryObt, m3TheoryMax);
+          if (isAbsent([s.MajorDiscipline3Paper1Obtained])){
+            m3Grade = getGrade('A')
+            m3Perc = 0;
+          }else{
+            m3Perc = m3TheoryPass ? percent(m3GradeObt, m3GradeMax): 0 ;
+            m3Grade = getGrade(m3Perc)
+          }
+          const Ci3 = safeInt(s.MajorDiscipline3TotalCreditMax);
+          const Gi3 = safeInt(m3Grade?.gradePoint ?? 0);
+
+          const Cps3 = Ci3 * Gi3;
+
           const m3OverallPass =
             m3TheoryPass && isPass(m3TotalObt, s.MajorDiscipline3TotalMax);
-
-          if (isAbsent([s.MajorDiscipline3Paper1Obtained]))
-            updateFields.MajorDiscipline2TheoryStatus = "ABSENT";
-
-          if (isAbsent([s.MajorDiscipline3CiaObtained]))
-            updateFields.MajorDiscipline3CiaStatus = "ABSENT";
 
           // ======================
           // MINOR
           // ======================
 
-          const minorObt = total([
+          const minorTheoryPass = isPass(
             s.MinorDisciplinePaperObtained,
-            s.MinorDisciplineCiaObtained,
+            s.MinorDisciplinePaperMax
+          );
+
+          const minorObt = total([
+            safeInt(s.MinorDisciplinePaperObtained),
+            safeInt(s.MinorDisciplineCiaObtained),
           ]);
 
           const minorMax = total([
-            s.MinorDisciplinePaperMax,
-            s.MinorDisciplineCiaMax,
+            safeInt(s.MinorDisciplinePaperMax),
+            safeInt(s.MinorDisciplineCiaMax),
           ]);
 
-          const minorPerc = percent(minorObt, minorMax);
-          const minorGrade = getGrade(minorPerc);
+          let minorGrade
+          let minorPerc
+
+          if (isAbsent([s.MinorDisciplinePaperObtained])){
+            minorGrade = getGrade('A')
+            minorPerc = 0;
+          }else{
+            minorPerc = minorTheoryPass ? percent(minorObt, minorMax): 0 ;
+            minorGrade = getGrade(minorPerc)
+          }
+
+          const CiMi = safeInt(s.MinorDisciplineCreditMax);
+          const GiMi = safeInt(minorGrade?.gradePoint ?? 0);
+
+          const CpsMi = CiMi * GiMi;
 
           const minorPass =
             isPass(s.MinorDisciplinePaperObtained, s.MinorDisciplinePaperMax) &&
             isPass(minorObt, minorMax);
 
-          if (isAbsent([s.MinorDisciplinePaperObtained]))
-            updateFields.MinorDisciplineTheoryStatus = "ABSENT";
-
-          if (isAbsent([s.MinorDisciplineCiaObtained]))
-            updateFields.MinorDisciplineCiaStatus = "ABSENT";
-
-          if (isAbsent([s.MinorDisciplinePracticalObtained]))
-            updateFields.MinorDisciplinePracticalStatus = "ABSENT";
-
-
           // ===========================
           // OVER ALL MARKS OBTAINED
           // ===========================
-            const OverAllMarksObtained = total([
-              safeInt(m1TotalObt),
-              safeInt(m2TotalObt),
-              safeInt(m3TotalObt),
-              safeInt(minorObt),
-              ])
-
-
-
+          const OverAllMarksObtained = total([
+            safeInt(m1TotalObt),
+            safeInt(m2TotalObt),
+            safeInt(m3TotalObt),
+            safeInt(minorObt),
+          ]);
 
           // ===========================
           // DETENTION RULES FOR RESULT
           // ===========================
 
-          const m1Status =          
-            m1OverallPass && m1Grade?.classisfication != "FAIL"
-              ? "PASS"
-              : "FAIL";
-          const m2Status =
-            m2OverallPass && m2Grade?.classisfication != "FAIL"
-              ? "PASS"
-              : "FAIL";
-          const m3Status =
-            m3OverallPass && m3Grade?.classisfication != "FAIL"
-              ? "PASS"
-              : "FAIL";
-          const minorStatus =
-            minorPass && minorGrade?.classisfication != "FAIL"
-              ? "PASS"
-              : "FAIL";
+          const m1Status = isAbsent([s.MajorDiscipline1Paper1Obtained])
+            ? "Ab"
+            : m1OverallPass && m1Grade?.classisfication !== "Failed"
+            ? "PASS"
+            : "FAIL";
 
-              const failCount = [m1Status, m2Status, m3Status, minorStatus].filter(
-                (status) => status === "FAIL"
-              ).length;
+          const m2Status = isAbsent([s.MajorDiscipline2Paper1Obtained])
+            ? "Ab"
+            : m2OverallPass && m2Grade?.classisfication !== "Failed"
+            ? "PASS"
+            : "FAIL";
+          const m3Status = isAbsent([s.MajorDiscipline3Paper1Obtained])
+            ? "Ab"
+            : m3OverallPass && m3Grade?.classisfication !== "Failed"
+            ? "PASS"
+            : "FAIL";
+          const minorStatus = isAbsent([s.MinorDisciplinePaperObtained])
+            ? "Ab"
+            : minorPass && minorGrade?.classisfication !== "Failed"
+            ? "PASS"
+            : "FAIL";
 
-          
-              let Result=failCount;
-              
-              if (failCount === 0) {
-                Result = "PASS";
-              } 
-              else if (failCount <= 2) {
-                Result = "Eligible for Second Examination";
-              } else {
-                Result = "FAIL";
-              }
+          // -------------------------
+          // NORMALIZE STATUSES
+          // -------------------------
+          const statuses = [m1Status, m2Status, m3Status, minorStatus].filter(
+            Boolean
+          ); // handles missing Major3 safely
+
+          // -------------------------
+          // COUNTS
+          // -------------------------
+          const failOnlyCount = statuses.filter((s) =>
+            ["FAIL", "Ab"].includes(s)
+          ).length;
+
+          const hasAbsent = statuses.includes("Ab");
+
+          const allAbsent =
+            statuses.length > 0 && statuses.every((s) => s === "Ab");
+
+          const hasUFM =
+            statuses.includes("UFM") ||
+            [
+              s.MajorDiscipline1Paper1Obtained,
+              s.MajorDiscipline2Paper1Obtained,
+              s.MajorDiscipline3Paper1Obtained,
+              s.MinorDisciplinePaperObtained,
+            ].some((v) => v === "UF");
+
+          // -------------------------
+          // FINAL RESULT LOGIC
+          // -------------------------
+          let Result;
+
+          if (hasUFM) {
+            Result = "UFM";
+          } else if (allAbsent) {
+            Result = "ABSENT";
+          } else if (failOnlyCount === 0 && !hasAbsent) {
+            Result = "PASS";
+          } else if (failOnlyCount <= 2) {
+            Result = "Eligible for Second Examination";
+          } else {
+            Result = "FAIL";
+          }
+
+          const Sgpa = Number(
+            total([Cps1, Cps2, Cps3, CpsMi]) / total([Ci1, Ci2, Ci3, CiMi])
+          ).toFixed(2);
 
           // ======================
           // FINAL RESULT OBJECT
           // ======================
           const finalResult = {
+            //Major 1
             MajorDiscipline1TheoryObtained: m1TheoryObt,
-            MajorDiscipline1CIAObtained: s.MajorDiscipline1CiaObtained,
             MajorDiscipline1TotalObtained: m1TotalObt,
             MajorDiscipline1Percentage: m1Perc,
-            MajorDiscipline1GradePoint: m1Grade?.gradePoint || 0,
-            MajorDiscipline1LetterGrade: m1OverallPass
-              ? m1Grade?.letterGrade || "F"
-              : "F",
-            MajorDiscipline1Classisfication: m1OverallPass
-              ? m1Grade?.classisfication || "FAIL"
-              : "FAIL",
-              MajorDiscipline2TheoryObtained: m2TheoryObt,
-              MajorDiscipline2CIAObtained: s.MajorDiscipline2CiaObtained,
-            MajorDiscipline2TotalObtained: m2TotalObt,
-            MajorDiscipline2Percentage: m2Perc,
-            MajorDiscipline2GradePoint: m2Grade?.gradePoint || 0,
-            MajorDiscipline2LetterGrade: m2OverallPass
-              ? m2Grade?.letterGrade || "F"
-              : "F",
-            MajorDiscipline2Classisfication: m2OverallPass
-              ? m2Grade?.classisfication || "FAIL"
-              : "FAIL",
+            MajorDiscipline1GradePoint: m1Grade?.gradePoint ?? 0,
+            MajorDiscipline1LetterGrade: m1Grade?.letterGrade,
+            MajorDiscipline1Classisfication: m1Grade?.classisfication,
+            Major1Status: m1Status,
 
+            //Major 2
+            MajorDiscipline2TheoryObtained: m2TheoryObt,
             MajorDiscipline2TotalObtained: m2TotalObt,
             MajorDiscipline2Percentage: m2Perc,
-            MajorDiscipline2GradePoint: m2Grade?.gradePoint || 0,
-            MajorDiscipline2LetterGrade: m2OverallPass
-              ? m2Grade?.letterGrade || "F"
-              : "F",
-            MajorDiscipline2Classisfication: m2OverallPass
-              ? m2Grade?.classisfication || "FAIL"
-              : "FAIL",
+            MajorDiscipline2GradePoint: m2Grade?.gradePoint ?? 0,
+            MajorDiscipline2LetterGrade: m2Grade?.letterGrade,
+            MajorDiscipline2Classisfication: m2Grade?.classisfication,
+            Major2Status: m2Status,
+
+            //Major 3
             MajorDiscipline3TheoryObtained: m3TheoryObt,
             MajorDiscipline3CIAObtained: s.MajorDiscipline3CiaObtained,
             MajorDiscipline3TotalObtained: m3TotalObt,
             MajorDiscipline3Percentage: m3Perc,
-            MajorDiscipline3GradePoint: m3Grade?.gradePoint || 0,
-            MajorDiscipline3LetterGrade: m3OverallPass
-              ? m3Grade?.letterGrade || "F"
-              : "F",
-            MajorDiscipline3Classisfication: m3OverallPass
-              ? m3Grade?.classisfication || "FAIL"
-              : "FAIL",
+            MajorDiscipline3GradePoint: m3Grade?.gradePoint ?? 0,
+            MajorDiscipline3LetterGrade: m3Grade?.letterGrade,
+            MajorDiscipline3Classisfication: m3Grade?.classisfication,
+            Major3Status: m3Status,
+
+            //Minor
             MinorDisciplineTheoryObtained: s.MinorDisciplinePaperObtained,
             MinorDisciplineCIAObtained: s.MinorDisciplineCiaObtained,
             MinorDisciplineTotalObtained: minorObt,
             MinorPercentage: minorPerc,
-            MinorGradePoint: minorGrade?.gradePoint || 0,
-            MinorDisciplineLetterGrade: minorPass
-              ? minorGrade?.letterGrade || "F"
-              : "F",
-            MinorDisciplineClassisfication: minorPass
-              ? minorGrade?.classisfication || "FAIL"
-              : "FAIL",
+            MinorGradePoint: minorGrade?.gradePoint ?? 0,
+            MinorDisciplineLetterGrade: minorGrade?.letterGrade,
+            MinorDisciplineClassisfication: minorGrade?.classisfication,
+            MinorStatus: minorStatus,
+
             Skill: s.Skill,
 
             OverAllSemMarks: OverAllMarksObtained,
             OverAllResult: Result,
-            Major1Status:m1Status,
-            Major2Status:m2Status,
-            Major3Status:m3Status,
-            MinorStatus:minorStatus,
+            Major1Cps: Cps1,
+            Major2Cps: Cps2,
+            Major3Cps: Cps3,
+            MinorCps: CpsMi,
+            TotalCpsObtained: total([Cps1, Cps2, Cps3, CpsMi]),
+            TotalCi: total([Ci1, Ci2, Ci3, CiMi]),
+            TotalSgpa: Sgpa,
           };
 
           bulkOps.push({
             updateOne: {
               filter: { _id: s._id },
-              update: { $set: { ...updateFields, ...finalResult } },
+              // update: { $set: { ...updateFields, ...finalResult } },
+              update: { $set: { ...finalResult } },
             },
           });
 
