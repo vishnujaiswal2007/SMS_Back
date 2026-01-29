@@ -41,42 +41,44 @@ static UploadMarks = async (req, res) => {
       await client.connect();
 
       const myobj = req.body;
-
       const resultCol = client.db("NepUG").collection(myobj.DB_CL + "_RESULT");
+      const nepDB = client.db("NEP");
 
       const sessionCandidates = await resultCol
         .find({ Session: myobj.session })
         .toArray();
 
-      const nepDB = client.db("NEP");
-
       const reportRows = [];
       const bulkOps = [];
 
       // =========================
-      // HELPER FUNCTION
+      // HELPER
       // =========================
       const updateIfValid = (
         candidate,
         updateFields,
         report,
-        paperMatch,
+        match,
         obtainedField,
         maxField,
         marks
       ) => {
+        if (!match) return false;
+
         if (
-          paperMatch &&
-          (candidate[obtainedField] === "" || candidate[obtainedField] == null)
+          candidate[obtainedField] !== "" &&
+          candidate[obtainedField] != null
         ) {
-          if (marks > candidate[maxField]) {
-            report.Reason = "Marks greater than maximum";
-            return false;
-          }
-          updateFields[obtainedField] = marks;
-          return true;
+          return false;
         }
-        return null;
+
+        if (marks > candidate[maxField]) {
+          report.Reason = "Marks greater than maximum";
+          return false;
+        }
+
+        updateFields[obtainedField] = marks;
+        return true;
       };
 
       // =========================
@@ -132,133 +134,131 @@ static UploadMarks = async (req, res) => {
         report.Discipline = disciplineName;
         if (!isCIA) report.Paper = paperName;
 
-        const isMajor1 = candidate.MajorDiscipline1 === disciplineName;
-        const isMajor2 = candidate.MajorDiscipline2 === disciplineName;
-        const isMinor = candidate.MinorDiscipline === disciplineName;
-
-        if (!isMajor1 && !isMajor2 && !isMinor) {
-          report.Reason = "Discipline not linked to candidate";
-          reportRows.push(report);
-          continue;
-        }
+        // =========================
+        // FINAL DISCIPLINE CONFIG
+        // =========================
+        const disciplineConfig = [
+          {
+            key: "MajorDiscipline1",
+            enabled: true,
+            cia: {
+              obt: "MajorDiscipline1CiaObtained",
+              max: "MajorDiscipline1CiaMax",
+            },
+            papers: [
+              {
+                name: "MajorDiscipline1Paper1",
+                obt: "MajorDiscipline1Paper1Obtained",
+                max: "MajorDiscipline1Paper1Max",
+              },
+              {
+                name: "MajorDiscipline1Paper2",
+                obt: "MajorDiscipline1Paper2Obtained",
+                max: "MajorDiscipline1Paper2Max",
+              },
+              {
+                name: "MajorDiscipline1Paper3",
+                obt: "MajorDiscipline1Paper3Obtained",
+                max: "MajorDiscipline1Paper3Max",
+              },
+            ],
+          },
+          {
+            key: "MajorDiscipline2",
+            enabled: true,
+            cia: {
+              obt: "MajorDiscipline2CiaObtained",
+              max: "MajorDiscipline2CiaMax",
+            },
+            papers: [
+              {
+                name: "MajorDiscipline2Paper1",
+                obt: "MajorDiscipline2Paper1Obtained",
+                max: "MajorDiscipline2Paper1Max",
+              },
+              {
+                name: "MajorDiscipline2Paper2",
+                obt: "MajorDiscipline2Paper2Obtained",
+                max: "MajorDiscipline2Paper2Max",
+              },
+              {
+                name: "MajorDiscipline2Paper3",
+                obt: "MajorDiscipline2Paper3Obtained",
+                max: "MajorDiscipline2Paper3Max",
+              },
+            ],
+          },
+          {
+            key: "MajorDiscipline3",
+            enabled: myobj.PRG_Code === "PRE008",
+            cia: {
+              obt: "MajorDiscipline3CiaObtained",
+              max: "MajorDiscipline3CiaMax",
+            },
+            papers: [
+              {
+                name: "MajorDiscipline3Paper1",
+                obt: "MajorDiscipline3Paper1Obtained",
+                max: "MajorDiscipline3Paper1Max",
+              },
+              {
+                name: "MajorDiscipline3Paper2",
+                obt: "MajorDiscipline3Paper2Obtained",
+                max: "MajorDiscipline3Paper2Max",
+              },
+              {
+                name: "MajorDiscipline3Paper3",
+                obt: "MajorDiscipline3Paper3Obtained",
+                max: "MajorDiscipline3Paper3Max",
+              },
+            ],
+          },
+          {
+            key: "MinorDiscipline",
+            enabled: true,
+            cia: {
+              obt: "MinorDisciplineCiaObtained",
+              max: "MinorDisciplineCiaMax",
+            },
+            papers: [
+              {
+                name: "MinorDisciplinePaper",
+                obt: "MinorDisciplinePaperObtained",
+                max: "MinorDisciplinePaperMax",
+              },
+            ],
+          },
+        ];
 
         const updateFields = {};
         let updated = false;
 
-        // =========================
-        // MAJOR 1
-        // =========================
-        if (isMajor1) {
-          if (isCIA) {
-            updated ||= updateIfValid(
-              candidate,
-              updateFields,
-              report,
-              true,
-              "MajorDiscipline1CiaObtained",
-              "MajorDiscipline1CiaMax",
-              dt.mrk11
-            );
-          } else {
-            updated ||= updateIfValid(
-              candidate,
-              updateFields,
-              report,
-              candidate.MajorDiscipline1Paper1 === paperName,
-              "MajorDiscipline1Paper1Obtained",
-              "MajorDiscipline1Paper1Max",
-              dt.mrk11
-            );
-            updated ||= updateIfValid(
-              candidate,
-              updateFields,
-              report,
-              candidate.MajorDiscipline1Paper2 === paperName,
-              "MajorDiscipline1Paper2Obtained",
-              "MajorDiscipline1Paper2Max",
-              dt.mrk11
-            );
-            updated ||= updateIfValid(
-              candidate,
-              updateFields,
-              report,
-              candidate.MajorDiscipline1Paper3 === paperName,
-              "MajorDiscipline1Paper3Obtained",
-              "MajorDiscipline1Paper3Max",
-              dt.mrk11
-            );
-          }
-        }
+        for (const d of disciplineConfig) {
+          if (!d.enabled) continue;
+          if (candidate[d.key] !== disciplineName) continue;
 
-        // =========================
-        // MAJOR 2
-        // =========================
-        if (isMajor2) {
           if (isCIA) {
             updated ||= updateIfValid(
               candidate,
               updateFields,
               report,
               true,
-              "MajorDiscipline2CiaObtained",
-              "MajorDiscipline2CiaMax",
+              d.cia.obt,
+              d.cia.max,
               dt.mrk11
             );
           } else {
-            updated ||= updateIfValid(
-              candidate,
-              updateFields,
-              report,
-              candidate.MajorDiscipline2Paper1 === paperName,
-              "MajorDiscipline2Paper1Obtained",
-              "MajorDiscipline2Paper1Max",
-              dt.mrk11
-            );
-            updated ||= updateIfValid(
-              candidate,
-              updateFields,
-              report,
-              candidate.MajorDiscipline2Paper2 === paperName,
-              "MajorDiscipline2Paper2Obtained",
-              "MajorDiscipline2Paper2Max",
-              dt.mrk11
-            );
-            updated ||= updateIfValid(
-              candidate,
-              updateFields,
-              report,
-              candidate.MajorDiscipline2Paper3 === paperName,
-              "MajorDiscipline2Paper3Obtained",
-              "MajorDiscipline2Paper3Max",
-              dt.mrk11
-            );
-          }
-        }
-
-        // =========================
-        // MINOR
-        // =========================
-        if (isMinor) {
-          if (isCIA) {
-            updated ||= updateIfValid(
-              candidate,
-              updateFields,
-              report,
-              true,
-              "MinorDisciplineCiaObtained",
-              "MinorDisciplineCiaMax",
-              dt.mrk11
-            );
-          } else {
-            updated ||= updateIfValid(
-              candidate,
-              updateFields,
-              report,
-              candidate.MinorDisciplinePaper === paperName,
-              "MinorDisciplinePaperObtained",
-              "MinorDisciplinePaperMax",
-              dt.mrk11
-            );
+            for (const p of d.papers) {
+              updated ||= updateIfValid(
+                candidate,
+                updateFields,
+                report,
+                candidate[p.name] === paperName,
+                p.obt,
+                p.max,
+                dt.mrk11
+              );
+            }
           }
         }
 
