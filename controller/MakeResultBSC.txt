@@ -1,0 +1,576 @@
+ static MakeResult = async (req, res) => {
+    const client = new MongoClient(URL);
+
+    try {
+      const myobj = req.body;
+
+      if (!myobj?.sem?.DB_CL || !myobj?.session) {
+        return res.status(400).json({
+          status: "Fail",
+          message: "Invalid request data",
+        });
+      }
+
+      await client.connect();
+
+      const resultDB = client.db("NepUG");
+      const masterDB = client.db("NEP");
+
+      const collection = resultDB.collection(`${myobj.sem.DB_CL}_RESULT`);
+
+      const gradingSystem = await masterDB
+        .collection("GradeSystem")
+        .find({})
+        .toArray();
+
+      const students = await collection
+        .find({ Session: myobj.session })
+        .toArray();
+
+      if (!students.length) {
+        return res.status(404).json({
+          status: "Fail",
+          message: "No students found for this session",
+        });
+      }
+
+      // ======================
+      // HELPER FUNCTIONS
+      // ======================
+      const safeInt = (v) => (v != null && !isNaN(v) ? Number(v) : 0);
+
+      const total = (arr) => arr.map(safeInt).reduce((a, b) => a + b, 0);
+
+      const calc40 = (max) => Math.round(safeInt(max) * 0.4);
+
+      const isPass = (obt, max) => safeInt(obt) >= calc40(max);
+
+      // const invalidNumber = (obt, max) => (obt>=max?"AA":obt)
+
+      const percent = (obt, max) =>
+        safeInt(max) === 0
+          ? 0
+          : Number(((safeInt(obt) / safeInt(max)) * 100).toFixed(2));
+
+      const isAbsent = (arr) =>
+        arr.every(
+          (v) => v === "AA"
+          // || safeInt(v) === 0
+        );
+
+      const isAnyAbsent = (arr) => arr.some((v) => v === "AA");
+
+      const getGrade = (p) => {
+        if (p === "A") {
+          return (
+            gradingSystem.find(
+              (g) =>
+                g.percentageMarksMin === "A" && g.percentageMarksMax === "A"
+            ) || null
+          );
+        } else {
+          return (
+            gradingSystem.find(
+              (g) =>
+                p >= Number(g.percentageMarksMin) &&
+                p < Number(g.percentageMarksMax)
+            ) || null
+          );
+        }
+      };
+
+      // ======================
+      // BULK + REPORT
+      // ======================
+      const bulkOps = [];
+      const reportRows = [];
+
+      // ======================
+      // PROCESS STUDENTS
+      // ======================
+      for (const s of students) {
+        // const updateFields = {};
+
+        // ======================
+        // MAJOR 1
+        // ======================
+
+        const m1TheoryObt = total([
+          s.MajorDiscipline1Paper1Obtained,
+          s.MajorDiscipline1Paper2Obtained,
+          s.MajorDiscipline1Paper3Obtained,
+        ]);
+
+        const m1TheoryMax = total([
+          s.MajorDiscipline1Paper1Max,
+          s.MajorDiscipline1Paper2Max,
+          s.MajorDiscipline1Paper3Max,
+        ]);
+
+        const m1Cia = safeInt(s.MajorDiscipline1CiaObtained);
+
+        const m1TotalObt = total([m1TheoryObt, m1Cia]);
+
+        const m1TotalMax = total([m1TheoryMax, s.MajorDiscipline1CiaMax]);
+
+        const hasPractical = safeInt(s.MajorDiscipline1PracticalMax) > 0;
+
+        const m1Practical = safeInt(s.MajorDiscipline1PracticalObtained);
+
+
+        const practicalAbsent =
+          hasPractical && s.MajorDiscipline1PracticalObtained === "AA";
+
+        const m1GradeObt = total([m1TheoryObt, m1Cia, m1Practical]);
+
+        const m1GradeMax = total([
+          m1TheoryMax,
+          s.MajorDiscipline1CiaMax,
+          s.MajorDiscipline1PracticalMax,
+        ]);
+
+        // ---- outputs ----
+        let m1OverallPass = false;
+        let m1Perc = 0;
+        let m1Grade = null;
+
+        // ======================
+        // STEP 1: ABSENT
+        // ======================
+        if (
+          isAnyAbsent([
+            s.MajorDiscipline1Paper1Obtained,
+            s.MajorDiscipline1Paper2Obtained,
+            s.MajorDiscipline1Paper3Obtained,
+          ]) ||
+          practicalAbsent
+        ) {
+          m1OverallPass = false;
+          m1Perc = 0;
+          m1Grade = getGrade("A"); // Absent grade
+        }
+        // ======================
+        // STEP 2: PRACTICAL FAIL
+        // ======================
+        else if (
+          hasPractical &&
+          !isPass(
+            s.MajorDiscipline1PracticalObtained,
+            s.MajorDiscipline1PracticalMax
+          )
+        ) {
+          m1OverallPass = false;
+          m1Perc = 0;
+          m1Grade = getGrade(0);
+        }
+        // ======================
+        // STEP 3: THEORY FAIL
+        // ======================
+        else if (!isPass(m1TotalObt, m1TotalMax)) {
+          m1OverallPass = false;
+          m1Perc = 0;
+          m1Grade = getGrade(0);
+        }
+        // ======================
+        // STEP 4: PASS
+        // ======================
+        else {
+          m1OverallPass = true;
+          m1Perc = percent(m1GradeObt, m1GradeMax);
+          m1Grade = getGrade(m1Perc);
+        }
+        // ======================
+        // CPS
+        // ======================
+        const Ci1 = safeInt(s.MajorDiscipline1TotalCreditMax);
+        const Gi1 = safeInt(m1Grade?.gradePoint ?? 0);
+        const Cps1 = Ci1 * Gi1;
+
+
+
+        // 
+        
+
+        // const Major1PracticalStatus = isPass(
+        //   m1Practical,
+        //   s.MajorDiscipline1PracticalMax
+        // );
+
+        // if (
+        //   isAnyAbsent([
+        //     s.MajorDiscipline1PracticalObtained,
+        //     s.MajorDiscipline1Paper1Obtained,
+        //     s.MajorDiscipline1Paper2Obtained,
+        //     s.MajorDiscipline1Paper3Obtained,
+        //   ])
+        // ) {
+        //   m1Grade = getGrade("A");
+        //   m1Perc = 0;
+        // } else {
+        //   if (hasPractical) {
+        //     m1Perc =
+        //       Major1PracticalStatus && isPass(m1TotalObt, m1TotalMax)
+        //         ? percent(m1GradeObt, m1GradeMax)
+        //         : 0;
+        //     m1Grade = getGrade(m1Perc);
+
+        //     const Ci1 = safeInt(s.MajorDiscipline1TotalCreditMax);
+        //     const Gi1 = safeInt(m1Grade?.gradePoint ?? 0);
+
+        //     Cps1 = Ci1 * Gi1;
+
+        //     m1OverallPass =
+        //       Major1PracticalStatus && isPass(m1TotalObt, m1TotalMax);
+        //   } else {
+        //     m1Perc = isPass(m1TotalObt, m1TotalMax)
+        //       ? percent(m1GradeObt, m1GradeMax)
+        //       : 0;
+        //     m1Grade = getGrade(m1Perc);
+
+        //     const Ci1 = safeInt(s.MajorDiscipline1TotalCreditMax);
+        //     const Gi1 = safeInt(m1Grade?.gradePoint ?? 0);
+
+        //     Cps1 = Ci1 * Gi1;
+
+        //     m1OverallPass = isPass(m1TotalObt, m1TotalMax);
+        //   }
+        // }
+
+        // ======================
+        // MAJOR 2
+        // ======================
+
+        const m2TheoryObt = total([
+          s.MajorDiscipline2Paper1Obtained,
+          s.MajorDiscipline2Paper2Obtained,
+          s.MajorDiscipline2Paper3Obtained,
+        ]);
+
+        const m2TheoryMax = total([
+          s.MajorDiscipline2Paper1Max,
+          s.MajorDiscipline2Paper2Max,
+          s.MajorDiscipline2Paper3Max,
+        ]);
+
+        // const m2TheoryPass = isPass(m2TheoryObt, m2TheoryMax);
+
+        const m2Cia = safeInt(s.MajorDiscipline2CiaObtained);
+
+        const m2Practical = safeInt(s.MajorDiscipline2PracticalObtained);
+
+        const m2TotalObt = total([m2TheoryObt, m2Cia, m2Practical]);
+
+        const m2GradeObt = total([m2TheoryObt, m2Cia, m2Practical]);
+
+        const m2GradeMax = total([
+          m2TheoryMax,
+          s.MajorDiscipline2CiaMax,
+          s.MajorDiscipline2PracticalMax,
+        ]);
+
+        const Major2PracticalStatus = isPass(
+          m2Practical,
+          safeInt(s.MajorDiscipline2PracticalMax)
+        )
+          ? "PASS"
+          : "FAIL";
+
+        let m2Grade;
+        let m2Perc;
+
+        if (isAbsent([s.MajorDiscipline2PracticalObtained])) {
+          m2Grade = getGrade("A");
+          m2Perc = 0;
+        } else {
+          // m2Perc = m2TheoryPass ? percent(m2GradeObt, m2GradeMax) : 0;
+          m2Perc =
+            Major2PracticalStatus &&
+            isPass(m2TotalObt, s.MajorDiscipline2TotalMax)
+              ? percent(m2GradeObt, m2GradeMax)
+              : 0;
+          m2Grade = getGrade(m2Perc);
+        }
+
+        const Ci2 = safeInt(s.MajorDiscipline2TotalCreditMax);
+        const Gi2 = safeInt(m2Grade?.gradePoint ?? 0);
+
+        const Cps2 = Ci2 * Gi2;
+
+        // const m2OverallPass =
+        //   m2TheoryPass && isPass(m2TotalObt, s.MajorDiscipline2TotalMax);
+
+        let m2OverallPass;
+
+        if (isAbsent([s.MajorDiscipline2PracticalObtained])) {
+          // Practical absent → only total matters
+          m2OverallPass = isPass(m2TotalObt, m2GradeMax);
+        } else {
+          // Practical present → must pass practical + total
+          m2OverallPass =
+            Major2PracticalStatus && isPass(m2TotalObt, m2GradeMax);
+        }
+
+        // ======================
+        // MINOR
+        // ======================
+
+        const minorObt = total([
+          s.MinorDisciplinePaperObtained,
+          s.MinorDisciplineCiaObtained,
+          s.MinorDisciplinePracticalObtained,
+        ]);
+
+        const minorMax = total([
+          s.MinorDisciplinePaperMax,
+          s.MinorDisciplineCiaMax,
+          s.MinorDisciplinePracticleMax,
+        ]);
+
+        const MinorPracticalStatus = isPass(
+          safeInt(s.MinorDisciplinePracticalObtained),
+          safeInt(s.MinorDisciplinePracticleMax)
+        )
+          ? "PASS"
+          : "FAIL";
+
+        let minorGrade;
+        let minorPerc;
+
+        if (isAbsent([s.MinorDisciplinePracticalObtained])) {
+          minorGrade = getGrade("A");
+          minorPerc = 0;
+        } else {
+          // minorPerc = minorTheoryPass ? percent(minorObt, minorMax) : 0;
+          minorPerc =
+            MinorPracticalStatus && isPass(minorObt, minorMax)
+              ? percent(minorObt, minorMax)
+              : 0;
+          minorGrade = getGrade(minorPerc);
+        }
+
+        const CiMi = safeInt(s.MinorDisciplineTotalCreditMax);
+        const GiMi = safeInt(minorGrade?.gradePoint ?? 0);
+
+        const CpsMi = CiMi * GiMi;
+
+        // const minorPass = minorTheoryPass && isPass(minorObt, minorMax);
+
+        let minorPass;
+
+        if (isAbsent([s.MinorDisciplinePracticalObtained])) {
+          // Practical absent → only total matters
+          minorPass = isPass(minorObt, minorMax);
+        } else {
+          // Practical present → must pass practical + total
+          minorPass = MinorPracticalStatus && isPass(minorObt, minorMax);
+        }
+
+        // ===========================
+        // OVER ALL MARKS OBTAINED
+        // ===========================
+        const OverAllMarksObtained = total([m1TotalObt, m2TotalObt, minorObt]);
+
+        // ===========================
+        // DETENTION RULES FOR RESULT
+        // ===========================
+
+        const m1Status = isAnyAbsent([
+          s.MajorDiscipline1PracticalObtained,
+          s.MajorDiscipline1Paper1Obtained,
+          s.MajorDiscipline1Paper2Obtained,
+          s.MajorDiscipline1Paper3Obtained,
+        ])
+          ? "Ab"
+          : m1OverallPass
+          ? // && m1Grade?.classisfication !== "Failed"
+            "PASS"
+          : "FAIL";
+
+        const m2Status = isAbsent([s.MajorDiscipline2PracticalObtained])
+          ? "Ab"
+          : m2OverallPass
+          ? // && m2Grade?.classisfication !== "Failed"
+            "PASS"
+          : "FAIL";
+        const minorStatus = isAbsent([s.MinorDisciplinePracticalObtained])
+          ? "Ab"
+          : minorPass
+          ? // && minorGrade?.classisfication !== "Failed"
+            "PASS"
+          : "FAIL";
+
+        // -------------------------
+        // NORMALIZE STATUSES
+        // -------------------------
+        const statuses = [m1Status, m2Status, minorStatus].filter(Boolean); // handles missing Major3 safely
+
+        // -------------------------
+        // COUNTS
+        // -------------------------
+        const failOnlyCount = statuses.filter((s) =>
+          ["FAIL", "Ab"].includes(s)
+        ).length;
+
+        const hasAbsent = statuses.includes("Ab");
+
+        const allAbsent =
+          statuses.length > 0 && statuses.every((s) => s === "Ab");
+
+        const hasUFM =
+          statuses.includes("UFM") ||
+          [
+            s.MajorDiscipline1Paper1Obtained,
+            s.MajorDiscipline1Paper2Obtained,
+            s.MajorDiscipline1Paper3Obtained,
+            s.MajorDiscipline2Paper1Obtained,
+            s.MajorDiscipline2Paper2Obtained,
+            s.MajorDiscipline2Paper3Obtained,
+            s.MajorDiscipline3Paper1Obtained,
+            s.MajorDiscipline3Paper2Obtained,
+            s.MajorDiscipline3Paper3Obtained,
+            s.MinorDisciplinePaperObtained,
+          ].some((v) => v === "UF");
+
+        const hasDET =
+          statuses.includes("DET") ||
+          [
+            s.MajorDiscipline1Paper1Obtained,
+            s.MajorDiscipline1Paper2Obtained,
+            s.MajorDiscipline1Paper3Obtained,
+            s.MajorDiscipline2Paper1Obtained,
+            s.MajorDiscipline2Paper2Obtained,
+            s.MajorDiscipline2Paper3Obtained,
+            s.MajorDiscipline3Paper1Obtained,
+            s.MajorDiscipline3Paper2Obtained,
+            s.MajorDiscipline3Paper3Obtained,
+            s.MinorDisciplinePaperObtained,
+          ].some((v) => v === "DET");
+
+        // -------------------------
+        // FINAL RESULT LOGIC
+        // -------------------------
+        let Result;
+
+        if (hasUFM) {
+          Result = "UFM";
+        } else if (hasDET) {
+          Result = "Detained";
+        } else if (allAbsent) {
+          Result = "ABSENT";
+        } else if (failOnlyCount === 0 && !hasAbsent) {
+          Result = "PASS";
+        } else if (failOnlyCount <= 1) {
+          Result = "Eligible for Second Examination";
+        } else {
+          Result = "FAIL";
+        }
+
+        const Sgpa = Number(
+          total([Cps1, Cps2, CpsMi]) / total([Ci1, Ci2, CiMi])
+        ).toFixed(2);
+
+        // ======================
+        // FINAL RESULT OBJECT
+        // ======================
+        const finalResult = {
+          // ======================
+          // MAJOR 1
+          // ======================
+          MajorDiscipline1TheoryObtained: m1TheoryObt,
+          MajorDiscipline1TotalObtained: m1TotalObt,
+          MajorDiscipline1Percentage: m1Perc,
+          MajorDiscipline1GradePoint: m1Grade?.gradePoint ?? 0,
+          MajorDiscipline1LetterGrade: m1Grade?.letterGrade,
+          MajorDiscipline1Classisfication: m1Grade?.classisfication,
+          Major1PracticalStatus: "",
+          Major1Status: m1Status,
+          Major1Cps: Cps1,
+          PracticalMajor1: isAbsent([s.MajorDiscipline1PracticalObtained])
+            ? "Absent"
+            : "Present",
+
+          // ======================
+          // MAJOR 2
+          // ======================
+          MajorDiscipline2TheoryObtained: m2TheoryObt,
+          MajorDiscipline2TotalObtained: m2TotalObt,
+          MajorDiscipline2Percentage: m2Perc,
+          MajorDiscipline2GradePoint: m2Grade?.gradePoint ?? 0,
+          MajorDiscipline2LetterGrade: m2Grade?.letterGrade,
+          MajorDiscipline2Classisfication: m2Grade?.classisfication,
+          Major2Status: m2Status,
+          Major2Cps: Cps2,
+
+          // ======================
+          // MINOR
+          // ======================
+          MinorDisciplineTotalObtained: minorObt,
+          MinorPercentage: minorPerc,
+          MinorGradePoint: minorGrade?.gradePoint ?? 0,
+          MinorDisciplineLetterGrade: minorGrade?.letterGrade,
+          MinorDisciplineClassisfication: minorGrade?.classisfication,
+          MinorStatus: minorStatus,
+          MinorCps: CpsMi,
+
+          // ======================
+          // OVERALL
+          // ======================
+          Skill: s.Skill,
+          OverAllSemMarks: OverAllMarksObtained,
+          OverAllResult: Result,
+          TotalCpsObtained: total([Cps1, Cps2, CpsMi]),
+          TotalCi: total([Ci1, Ci2, CiMi]),
+          TotalSgpa: Sgpa,
+          Remarks: "GRADING SYSTEM @40%",
+          PDF: "PDF",
+        };
+
+        bulkOps.push({
+          updateOne: {
+            filter: { _id: s._id },
+            // update: { $set: { ...updateFields, ...finalResult } },
+            update: { $set: { ...finalResult } },
+          },
+        });
+
+        reportRows.push({
+          EnrolmentNumber: s.EnrolmentNumber,
+          RollNumber: s.RollNumber,
+          ...finalResult,
+        });
+      }
+
+      if (bulkOps.length) await collection.bulkWrite(bulkOps);
+
+      // ======================
+      // EXCEL EXPORT
+      // ======================
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(reportRows);
+      XLSX.utils.book_append_sheet(workbook, worksheet, "ResultReport");
+
+      const buffer = XLSX.write(workbook, {
+        bookType: "xlsx",
+        type: "buffer",
+      });
+
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=ResultReport.xlsx"
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      return res.send(buffer);
+    } catch (err) {
+      console.error("MakeResult Error:", err);
+      return res.status(500).json({
+        status: "Error",
+        message: "Internal Server Error",
+      });
+    } finally {
+      await client.close();
+    }
+  };

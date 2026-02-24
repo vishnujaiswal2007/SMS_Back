@@ -1324,30 +1324,25 @@ class userController {
               ...(disciplineMajor1Details?.DISCIPLINE && {
                 ...(disciplineMajor1Details?.MajorCiaMax != null && {
                   MajorDiscipline1CiaMax: disciplineMajor1Details.MajorCiaMax,
-                  MajorDiscipline1CiaObtained: "",
                 }),
                 ...(disciplineMajor1Details?.MajorPracticleMax != null && {
                   MajorDiscipline1PracticleMax:
                     disciplineMajor1Details.MajorPracticleMax,
-                  MajorDiscipline1PracticleObtained: "",
                 }),
 
                 ...(disciplineMajor1Details?.MajorPracticleCreditMax !=
                   null && {
                   MajorDiscipline1PracticleCreditMax:
                     disciplineMajor1Details.MajorPracticleCreditMax,
-                  MajorDiscipline1PracticleObtained: "",
                 }),
                 ...(disciplineMajor1Details?.MajorTotalMax != null && {
                   MajorDiscipline1TotalMax:
                     disciplineMajor1Details.MajorTotalMax,
-                  MajorDiscipline1TotalObtained: "",
                 }),
 
                 ...(disciplineMajor1Details?.MajorTotalCreditMax != null && {
                   MajorDiscipline1TotalCreditMax:
                     disciplineMajor1Details.MajorTotalCreditMax,
-                  MajorDiscipline1TotalCreditObtained: "",
                 }),
               }),
 
@@ -1357,13 +1352,11 @@ class userController {
                 MajorDiscipline1Paper1: paperMajorDiscipline1[0]?.COURSE_NAME,
                 ...(disciplineMajor1Details?.Major1Max != null && {
                   MajorDiscipline1Paper1Max: disciplineMajor1Details?.Major1Max,
-                  MajorDiscipline1Paper1Obtained: "",
                 }),
 
                 ...(disciplineMajor1Details?.Major1CreditMax != null && {
                   MajorDiscipline1Paper1CreditMax:
                     disciplineMajor1Details?.Major1CreditMax,
-                  MajorDiscipline1Paper1CreditObtained: "",
                 }),
               }),
 
@@ -1373,12 +1366,10 @@ class userController {
 
                 ...(disciplineMajor1Details?.Major2Max != null && {
                   MajorDiscipline1Paper2Max: disciplineMajor1Details?.Major2Max,
-                  MajorDiscipline1Paper2Obtained: "",
                 }),
                 ...(disciplineMajor1Details?.Major2CreditMax != null && {
                   MajorDiscipline1Paper2CreditMax:
                     disciplineMajor1Details?.Major2CreditMax,
-                  MajorDiscipline1Paper2CreditObtained: "",
                 }),
               }),
 
@@ -1388,12 +1379,10 @@ class userController {
                 MajorDiscipline1Paper3: paperMajorDiscipline1[2]?.COURSE_NAME,
                 ...(disciplineMajor1Details?.Major3Max != null && {
                   MajorDiscipline1Paper3Max: disciplineMajor1Details?.Major3Max,
-                  MajorDiscipline1Paper3Obtained: "",
                 }),
                 ...(disciplineMajor1Details?.Major3CreditMax != null && {
                   MajorDiscipline1Paper3CreditMax:
                     disciplineMajor1Details?.Major3CreditMax,
-                  MajorDiscipline1Paper3CreditObtained: "",
                 }),
               }),
 
@@ -1405,13 +1394,11 @@ class userController {
                 ...(disciplineMajor1Details?.MajorPracticleMax != null && {
                   MajorDiscipline1PracticalMax:
                     disciplineMajor1Details?.MajorPracticleMax,
-                  MajorDiscipline1PracticalObtained: "",
                 }),
                 ...(disciplineMajor1Details?.MajorPracticleCreditMax !=
                   null && {
                   MajorDiscipline1PracticalCreditMax:
                     disciplineMajor1Details?.MajorPracticleCreditMax,
-                  MajorDiscipline1PracticalCreditObtained: "",
                 }),
               }),
 
@@ -1420,28 +1407,23 @@ class userController {
                 MajorDiscipline2: disciplineMajor2?.DISCIPLINE,
                 ...(disciplineMajor2Details?.MajorCiaMax != null && {
                   MajorDiscipline2CiaMax: disciplineMajor2Details?.MajorCiaMax,
-                  MajorDiscipline2CiaObtained: "",
                 }),
                 ...(disciplineMajor2Details?.MajorPracticleMax != null && {
                   MajorDiscipline2PracticleMax:
                     disciplineMajor2Details?.MajorPracticleMax,
-                  MajorDiscipline2PracticleObtained: "",
                 }),
                 ...(disciplineMajor2Details?.MajorPracticleCreditMax !=
                   null && {
                   MajorDiscipline2PracticleCreditMax:
                     disciplineMajor2Details?.MajorPracticleCreditMax,
-                  MajorDiscipline2PracticleCreditObtained: "",
                 }),
                 ...(disciplineMajor2Details?.MajorTotalMax != null && {
                   MajorDiscipline2TotalMax:
                     disciplineMajor2Details?.MajorTotalMax,
-                  MajorDiscipline2TotalObtained: "",
                 }),
                 ...(disciplineMajor2Details?.MajorTotalCreditMax != null && {
                   MajorDiscipline2TotalCreditMax:
                     disciplineMajor2Details?.MajorTotalCreditMax,
-                  MajorDiscipline2TotalCreditObtained: "",
                 }),
               }),
 
@@ -1451,12 +1433,10 @@ class userController {
                 MajorDiscipline2Paper1: paperMajorDiscipline2[0]?.COURSE_NAME,
                 ...(disciplineMajor2Details?.Major1Max != null && {
                   MajorDiscipline2Paper1Max: disciplineMajor2Details?.Major1Max,
-                  MajorDiscipline2Paper1Obtained: "",
                 }),
                 ...(disciplineMajor2Details?.Major1CreditMax != null && {
                   MajorDiscipline2Paper1CreditMax:
                     disciplineMajor2Details?.Major1CreditMax,
-                  MajorDiscipline2Paper1CreditObtained: "",
                 }),
               }),
 
@@ -1466,12 +1446,10 @@ class userController {
                 MajorDiscipline2Paper2: paperMajorDiscipline2[1]?.COURSE_NAME,
                 ...(disciplineMajor2Details?.Major2Max != null && {
                   MajorDiscipline2Paper2Max: disciplineMajor2Details?.Major2Max,
-                  MajorDiscipline2Paper2Obtained: "",
                 }),
                 ...(disciplineMajor2Details?.Major2CreditMax != null && {
                   MajorDiscipline2Paper2CreditMax:
                     disciplineMajor2Details?.Major2CreditMax,
-                  MajorDiscipline2Paper2CreditObtained: "",
                 }),
               }),
 
@@ -1481,12 +1459,10 @@ class userController {
                 MajorDiscipline2Paper3: paperMajorDiscipline2[2]?.COURSE_NAME,
                 ...(disciplineMajor2Details?.Major3Max != null && {
                   MajorDiscipline2Paper3Max: disciplineMajor2Details?.Major3Max,
-                  MajorDiscipline2Paper3Obtained: "",
                 }),
                 ...(disciplineMajor2Details?.Major3CreditMax != null && {
                   MajorDiscipline2Paper3CreditMax:
                     disciplineMajor2Details?.Major3CreditMax,
-                  MajorDiscipline2Paper3CreditObtained: "",
                 }),
               }),
 
@@ -1498,13 +1474,11 @@ class userController {
                 ...(disciplineMajor2Details?.MajorPracticleMax != null && {
                   MajorDiscipline2PracticalMax:
                     disciplineMajor2Details?.MajorPracticleMax,
-                  MajorDiscipline2PracticalObtained: "",
                 }),
                 ...(disciplineMajor2Details?.MajorPracticleCreditMax !=
                   null && {
                   MajorDiscipline2PracticalCreditMax:
                     disciplineMajor2Details?.MajorPracticleCreditMax,
-                  MajorDiscipline2PracticalCreditObtained: "",
                 }),
               }),
 
@@ -1513,29 +1487,24 @@ class userController {
                 MinorDiscipline: disciplineMinorDetails?.DISCIPLINE,
                 ...(disciplineMinorDetails?.Minor1CiaMax != null && {
                   MinorDisciplineCiaMax: disciplineMinorDetails?.Minor1CiaMax,
-                  MinorDisciplineCiaObtained: "",
                 }),
                 ...(disciplineMinorDetails?.Minor1PracticleMax != null && {
                   MinorDisciplinePracticleMax:
                     disciplineMinorDetails?.Minor1PracticleMax,
-                  MinorDisciplinePracticleObtained: "",
                 }),
                 ...(disciplineMinorDetails?.Minor1PracticleCreditMax !=
                   null && {
                   MinorDisciplinePracticleCreditMax:
                     disciplineMinorDetails?.Minor1PracticleCreditMax,
-                  MinorDisciplinePracticleCreditObtained: "",
                 }),
                 ...(disciplineMinorDetails?.MinorTotalMax != null && {
                   MinorDisciplineTotalMax:
                     disciplineMinorDetails?.MinorTotalMax,
-                  MinorDisciplineTotalObtained: "",
                 }),
 
                 ...(disciplineMinorDetails?.MinorCreditMax != null && {
                   MinorDisciplineTotalCreditMax:
                     disciplineMinorDetails?.MinorCreditMax,
-                  MinorDisciplineTotalCreditObtained: "",
                 }),
               }),
 
@@ -1544,12 +1513,10 @@ class userController {
                 MinorDisciplinePaper: paperMinorDiscipline[0]?.COURSE_NAME,
                 ...(disciplineMinorDetails?.Minor1Max != null && {
                   MinorDisciplinePaperMax: disciplineMinorDetails?.Minor1Max,
-                  MinorDisciplinePaperObtained: "",
                 }),
                 ...(disciplineMinorDetails?.Minor1CreditMax != null && {
                   MinorDisciplinePaperCreditMax:
                     disciplineMinorDetails?.Minor1CreditMax,
-                  MinorDisciplinePaperCreditObtained: "",
                 }),
               }),
 
@@ -1561,13 +1528,11 @@ class userController {
                 ...(disciplineMinorDetails?.Minor1PracticalMax != null && {
                   MinorDisciplinePracticalMax:
                     disciplineMinorDetails?.Minor1PracticalMax,
-                  MinorDisciplinePracticalObtained: "",
                 }),
                 ...(disciplineMinorDetails?.Minor1PracticalCreditMax !=
                   null && {
                   MinorDisciplinePracticalCreditMax:
                     disciplineMinorDetails?.Minor1PracticalCreditMax,
-                  MinorDisciplinePracticalCreditObtained: "",
                 }),
               }),
               ...(row?.skil != null && {
@@ -1795,35 +1760,35 @@ class userController {
       const reportRows = [];
       const bulkOps = [];
 
-       // =========================
-        // HELPER
-        // =========================
-        const updateIfValid = (
-          candidate,
-          updateFields,
-          report,
-          match,
-          obtainedField,
-          maxField,
-          marks
-        ) => {
-          if (!match) return false;
+      // =========================
+      // HELPER
+      // =========================
+      const updateIfValid = (
+        candidate,
+        updateFields,
+        report,
+        match,
+        obtainedField,
+        maxField,
+        marks
+      ) => {
+        if (!match) return false;
 
-          if (
-            candidate[obtainedField] !== "" &&
-            candidate[obtainedField] != null
-          ) {
-            return false;
-          }
+        if (
+          candidate[obtainedField] !== "" &&
+          candidate[obtainedField] != null
+        ) {
+          return false;
+        }
 
-          if (Number(marks) > candidate[maxField]) {
-            report.Reason = "Marks greater than maximum";
-            return false;
-          }
+        if (Number(marks) > candidate[maxField]) {
+          report.Reason = "Marks greater than maximum";
+          return false;
+        }
 
-          updateFields[obtainedField] = marks;
-          return true;
-        };
+        updateFields[obtainedField] = marks;
+        return true;
+      };
 
       // =========================
       // PROCESS EACH ROW
@@ -1878,8 +1843,6 @@ class userController {
         const isMinorTheory = paCode === 0;
         const isMinorPractical = paCode === 5;
         const isMinorCIA = paCode === 4;
-
-       
 
         // =========================
         // FINAL DISCIPLINE CONFIG
@@ -2144,7 +2107,6 @@ class userController {
           reportRows.push(report);
           continue;
         }
-        
 
         bulkOps.push({
           updateOne: {
@@ -2198,6 +2160,9 @@ class userController {
     }
   };
 
+
+  
+  
   static MakeResult = async (req, res) => {
     const client = new MongoClient(URL);
 
@@ -2243,7 +2208,6 @@ class userController {
 
       const calc40 = (max) => Math.round(safeInt(max) * 0.4);
 
-
       const isPass = (obt, max) => safeInt(obt) >= calc40(max);
 
       // const invalidNumber = (obt, max) => (obt>=max?"AA":obt)
@@ -2251,10 +2215,15 @@ class userController {
       const percent = (obt, max) =>
         safeInt(max) === 0
           ? 0
-          : Number(((safeInt(obt) / safeInt(max)) * 100).toFixed(2))
+          : Number(((safeInt(obt) / safeInt(max)) * 100).toFixed(2));
 
       const isAbsent = (arr) =>
-        arr.every((v) => v === "AA" || safeInt(v) === 0);
+        arr.every(
+          (v) => v === "AA"
+          // || safeInt(v) === 0
+        );
+
+      const isAnyAbsent = (arr) => arr.some((v) => v === "AA");
 
       const getGrade = (p) => {
         if (p === "A") {
@@ -2274,6 +2243,13 @@ class userController {
           );
         }
       };
+
+      const getStatus = (theoryAbsent, practicalAbsent, overallPass) =>
+        theoryAbsent || practicalAbsent
+          ? "Ab"
+          : overallPass
+          ? "PASS"
+          : "FAIL";
 
       // ======================
       // BULK + REPORT
@@ -2303,13 +2279,19 @@ class userController {
           s.MajorDiscipline1Paper3Max,
         ]);
 
-        const m1TheoryPass = isPass(m1TheoryObt, m1TheoryMax);
-
         const m1Cia = safeInt(s.MajorDiscipline1CiaObtained);
+
+        const m1TotalObt = total([m1TheoryObt, m1Cia]);
+
+        const m1TotalMax = total([m1TheoryMax, s.MajorDiscipline1CiaMax]);
+
+        const m1hasPractical = safeInt(s.MajorDiscipline1PracticalMax) > 0;
 
         const m1Practical = safeInt(s.MajorDiscipline1PracticalObtained);
 
-        const m1TotalObt = total([m1TheoryObt, m1Cia, m1Practical]);
+
+        const m1PracticalAbsent =
+          m1hasPractical && s.MajorDiscipline1PracticalObtained === "AA";
 
         const m1GradeObt = total([m1TheoryObt, m1Cia, m1Practical]);
 
@@ -2319,24 +2301,63 @@ class userController {
           s.MajorDiscipline1PracticalMax,
         ]);
 
-        let m1Grade;
-        let m1Perc;
+        // ---- outputs ----
+        let m1OverallPass = false;
+        let m1Perc = 0;
+        let m1Grade = null;
 
-        if (isAbsent([m1TheoryObt])) {
-          m1Grade = getGrade("A");
+        // ======================
+        // STEP 1: ABSENT
+        // ======================
+        if (
+          isAnyAbsent([
+            s.MajorDiscipline1Paper1Obtained,
+            s.MajorDiscipline1Paper2Obtained,
+            s.MajorDiscipline1Paper3Obtained,
+          ]) ||
+          m1PracticalAbsent
+        ) {
+          m1OverallPass = false;
           m1Perc = 0;
-        } else {
-          m1Perc = m1TheoryPass ? percent(m1GradeObt, m1GradeMax) : 0;
+          m1Grade = getGrade("A"); // Absent grade
+        }
+        // ======================
+        // STEP 2: PRACTICAL FAIL
+        // ======================
+        else if (
+          m1hasPractical &&
+          !isPass(
+            s.MajorDiscipline1PracticalObtained,
+            s.MajorDiscipline1PracticalMax
+          )
+        ) {
+          m1OverallPass = false;
+          m1Perc = 0;
+          m1Grade = getGrade(0);
+        }
+        // ======================
+        // STEP 3: THEORY FAIL
+        // ======================
+        else if (!isPass(m1TotalObt, m1TotalMax)) {
+          m1OverallPass = false;
+          m1Perc = 0;
+          m1Grade = getGrade(0);
+        }
+        // ======================
+        // STEP 4: PASS
+        // ======================
+        else {
+          m1OverallPass = true;
+          m1Perc = percent(m1GradeObt, m1GradeMax);
           m1Grade = getGrade(m1Perc);
         }
-
+        // ======================
+        // CPS
+        // ======================
         const Ci1 = safeInt(s.MajorDiscipline1TotalCreditMax);
         const Gi1 = safeInt(m1Grade?.gradePoint ?? 0);
-
         const Cps1 = Ci1 * Gi1;
 
-        const m1OverallPass =
-          m1TheoryPass && isPass(m1TotalObt, s.MajorDiscipline1TotalMax);
 
         // ======================
         // MAJOR 2
@@ -2354,13 +2375,19 @@ class userController {
           s.MajorDiscipline2Paper3Max,
         ]);
 
-        const m2TheoryPass = isPass(m2TheoryObt, m2TheoryMax);
-
         const m2Cia = safeInt(s.MajorDiscipline2CiaObtained);
+
+        const m2TotalObt = total([m2TheoryObt, m2Cia]);
+
+        const m2TotalMax = total([m2TheoryMax, s.MajorDiscipline2CiaMax]);
+
+        const m2hasPractical = safeInt(s.MajorDiscipline2PracticalMax) > 0;
 
         const m2Practical = safeInt(s.MajorDiscipline2PracticalObtained);
 
-        const m2TotalObt = total([m2TheoryObt, m2Cia, m2Practical]);
+
+        const m2PracticalAbsent =
+          m2hasPractical && s.MajorDiscipline2PracticalObtained === "AA";
 
         const m2GradeObt = total([m2TheoryObt, m2Cia, m2Practical]);
 
@@ -2370,110 +2397,187 @@ class userController {
           s.MajorDiscipline2PracticalMax,
         ]);
 
-        let m2Grade;
-        let m2Perc;
-
-        if (isAbsent([m2TheoryObt])) {
-          m2Grade = getGrade("A");
-          m2Perc = 0;
-        } else {
-          m2Perc = m2TheoryPass ? percent(m2GradeObt, m2GradeMax) : 0;
-          m2Grade = getGrade(m2Perc);
-        }
-
-        const Ci2 = safeInt(s.MajorDiscipline2TotalCreditMax);
-        const Gi2 = safeInt(m2Grade?.gradePoint ?? 0);
-
-        const Cps2 = Ci2 * Gi2;
-
-        const m2OverallPass =
-          m2TheoryPass && isPass(m2TotalObt, s.MajorDiscipline2TotalMax);
+         // ---- outputs ----
+         let m2OverallPass = false;
+         let m2Perc = 0;
+         let m2Grade = null;
+ 
+         // ======================
+         // STEP 1: ABSENT
+         // ======================
+         if (
+           isAnyAbsent([
+             s.MajorDiscipline2Paper1Obtained,
+             s.MajorDiscipline2Paper2Obtained,
+             s.MajorDiscipline2Paper3Obtained,
+           ]) ||
+           m2PracticalAbsent
+         ) {
+           m2OverallPass = false;
+           m2Perc = 0;
+           m2Grade = getGrade("A"); // Absent grade
+         }
+         // ======================
+         // STEP 2: PRACTICAL FAIL
+         // ======================
+         else if (
+           m2hasPractical &&
+           !isPass(
+             s.MajorDiscipline2PracticalObtained,
+             s.MajorDiscipline2PracticalMax
+           )
+         ) {
+           m2OverallPass = false;
+           m2Perc = 0;
+           m2Grade = getGrade(0);
+         }
+         // ======================
+         // STEP 3: THEORY FAIL
+         // ======================
+         else if (!isPass(m2TotalObt, m2TotalMax)) {
+           m2OverallPass = false;
+           m2Perc = 0;
+           m2Grade = getGrade(0);
+         }
+         // ======================
+         // STEP 4: PASS
+         // ======================
+         else {
+           m2OverallPass = true;
+           m2Perc = percent(m2GradeObt, m2GradeMax);
+           m2Grade = getGrade(m2Perc);
+         }
+         // ======================
+         // CPS
+         // ======================
+         const Ci2 = safeInt(s.MajorDiscipline2TotalCreditMax);
+         const Gi2 = safeInt(m2Grade?.gradePoint ?? 0);
+         const Cps2 = Ci2 * Gi2;
+ 
 
         // ======================
         // MINOR
         // ======================
 
-        // if(safeInt(s.MinorDisciplinePaperMax) === 70 ){
-        //   s.MinorDisciplinePaperObtained = isAbsent([s.MinorDisciplinePaperObtained])? 
-        //   s.MinorDisciplinePaperObtained
-        //   : total([s.MinorDisciplinePaperObtained, 11])
-        // }else if(safeInt(s.MinorDisciplinePaperMax === 60)){
-        //   s.MinorDisciplinePaperObtained = isAbsent([s.MinorDisciplinePaperObtained])?
-        //   s.MinorDisciplinePaperObtained:
-        //    total([s.MinorDisciplinePaperObtained, 3])
-        // }
+        const minorObt = safeInt(s.MinorDisciplinePaperObtained);
 
-        // let REMARKS = ""; // or null
+        const minorMax = safeInt(s.MinorDisciplinePaperMax);
 
-        // if(safeInt(s.MinorDisciplinePaperObtained) > safeInt(s.MinorDisciplinePaperMax)){
+        const minorCia = safeInt(s.MinorDisciplineCiaObtained,);
 
-        //   REMARKS = "Minor Obtained Marks is Maximum"
-        // }
+        const minorTotalObt = total([minorObt, minorCia]);
 
-        const minorTheoryPass = isPass(
-          s.MinorDisciplinePaperObtained,
-          s.MinorDisciplinePaperMax
-        );
-        
-        const minorObt = total([
+        const minorTotalMax = total([minorMax, s.MinorDisciplineCiaMax,]);
+
+        const minorHasPractical = safeInt(s.MinorDisciplinePracticleMax) > 0;
+
+        const minorPractical = safeInt(s.MinorDisciplinePracticalObtained);
+
+
+        const minorPracticalAbsent =  minorHasPractical && s.MinorDisciplinePracticalObtained === "AA";
+
+        const minorGradeObt = total([ 
           s.MinorDisciplinePaperObtained,
           s.MinorDisciplineCiaObtained,
-          s.MinorDisciplinePracticalObtained,
-        ]);
-       
-        const minorMax = total([
+          s.MinorDisciplinePracticalObtained,]);
+
+        const minorGradeMax = total([
           s.MinorDisciplinePaperMax,
           s.MinorDisciplineCiaMax,
           s.MinorDisciplinePracticleMax,
         ]);
-       
-        let minorGrade;
-        let minorPerc;
 
-        if (isAbsent([s.MinorDisciplinePaperObtained])) {
-          minorGrade = getGrade("A");
+         // ---- outputs ----
+         let minorPass = false;
+         let minorPerc = 0;
+         let minorGrade = null;
+ 
+         // ======================
+         // STEP 1: ABSENT
+         // ======================
+         if (
+           isAnyAbsent([s.MinorDisciplinePaperObtained]) || minorPracticalAbsent
+         ) {
+          minorPass = false;
           minorPerc = 0;
-        } else {
-          minorPerc = minorTheoryPass ? percent(minorObt, minorMax) : 0;
+          minorGrade = getGrade("A"); // Absent grade
+         }
+         // ======================
+         // STEP 2: PRACTICAL FAIL
+         // ======================
+         else if (
+           minorHasPractical &&
+           !isPass(
+            minorPractical,
+            s.MinorDisciplinePracticleMax
+           )
+         ) {
+          minorPass = false;
+           minorPerc = 0;
+           minorGrade = getGrade(0);
+         }
+         // ======================
+         // STEP 3: THEORY FAIL
+         // ======================
+         else if (!isPass(minorTotalObt, minorTotalMax)) {
+          minorPass = false;
+          minorPerc = 0;
+          minorGrade = getGrade(0);
+         }
+         // ======================
+         // STEP 4: PASS
+         // ======================
+         else {
+          minorPass = true;
+          minorPerc = percent(minorGradeObt, minorGradeMax);
           minorGrade = getGrade(minorPerc);
-        }
+         }
+         // ======================
+         // CPS
+         // ======================
+         const CiMi = safeInt(s.MinorDisciplineTotalCreditMax);
+         const GiMi = safeInt(minorGrade?.gradePoint ?? 0);
+         const CpsMi = CiMi * GiMi;
+ 
 
-        const CiMi = safeInt(s.MinorDisciplineTotalCreditMax);
-        const GiMi = safeInt(minorGrade?.gradePoint ?? 0);
 
-        const CpsMi = CiMi * GiMi;
-
-        const minorPass = minorTheoryPass && isPass(minorObt, minorMax);
-
-      
         // ===========================
         // OVER ALL MARKS OBTAINED
         // ===========================
-        const OverAllMarksObtained = total([m1TotalObt, m2TotalObt, minorObt]);
+        const OverAllMarksObtained = total([m1GradeObt, m2GradeObt, minorGradeObt]);
 
         // ===========================
         // DETENTION RULES FOR RESULT
         // ===========================
 
-        const m1Status = isAbsent([m1TheoryObt])
-          ? "Ab"
-          : m1OverallPass 
-          // && m1Grade?.classisfication !== "Failed"
-          ? "PASS"
-          : "FAIL";
+        const m1TheoryAbsent = isAnyAbsent([
+          s.MajorDiscipline1Paper1Obtained,
+          s.MajorDiscipline1Paper2Obtained,
+          s.MajorDiscipline1Paper3Obtained])
 
-        const m2Status = isAbsent([m2TheoryObt])
-          ? "Ab"
-          : m2OverallPass 
-          // && m2Grade?.classisfication !== "Failed"
-          ? "PASS"
-          : "FAIL";
-        const minorStatus = isAbsent([minorObt])
-          ? "Ab"
-          : minorPass 
-          // && minorGrade?.classisfication !== "Failed"
-          ? "PASS"
-          : "FAIL";
+          const m2TheoryAbsent = isAnyAbsent([
+            s.MajorDiscipline2Paper1Obtained,
+            s.MajorDiscipline2Paper2Obtained,
+            s.MajorDiscipline2Paper3Obtained,
+          ])
+
+          const minorTheoryAbsent = isAnyAbsent([s.MinorDisciplinePaperObtained])
+
+        const m1Status = getStatus(
+          m1TheoryAbsent,
+          m1PracticalAbsent,
+          m1OverallPass
+        );
+        const m2Status = getStatus(
+          m2TheoryAbsent,
+          m2PracticalAbsent,
+          m2OverallPass
+        );
+        const minorStatus = getStatus(
+          minorTheoryAbsent,
+          minorPracticalAbsent,
+          minorPass
+        );
 
 
         // -------------------------
@@ -2508,7 +2612,7 @@ class userController {
             s.MinorDisciplinePaperObtained,
           ].some((v) => v === "UF");
 
-          const hasDET =
+        const hasDET =
           statuses.includes("DET") ||
           [
             s.MajorDiscipline1Paper1Obtained,
@@ -2530,16 +2634,16 @@ class userController {
 
         if (hasUFM) {
           Result = "UFM";
-        } else if(hasDET){
+        } else if (hasDET) {
           Result = "Detained";
         } else if (allAbsent) {
           Result = "ABSENT";
         } else if (failOnlyCount === 0 && !hasAbsent) {
-          Result = "PASS";
+          Result = "Promoted (P)";
         } else if (failOnlyCount <= 1) {
-          Result = "Eligible for Second Examination";
+          Result = "Eligible for Second Examination (Provisionally Promoted)";
         } else {
-          Result = "FAIL";
+          Result = "Semester Back (Provisionally Promoted)";
         }
 
         const Sgpa = Number(
@@ -2554,19 +2658,22 @@ class userController {
           // MAJOR 1
           // ======================
           MajorDiscipline1TheoryObtained: m1TheoryObt,
-          MajorDiscipline1TotalObtained: m1TotalObt,
+          MajorDiscipline1TotalObtained: m1GradeObt,
           MajorDiscipline1Percentage: m1Perc,
           MajorDiscipline1GradePoint: m1Grade?.gradePoint ?? 0,
           MajorDiscipline1LetterGrade: m1Grade?.letterGrade,
           MajorDiscipline1Classisfication: m1Grade?.classisfication,
           Major1Status: m1Status,
           Major1Cps: Cps1,
+          PracticalMajor1: isAbsent([s.MajorDiscipline1PracticalObtained])
+            ? "Absent"
+            : "Present",
 
           // ======================
           // MAJOR 2
           // ======================
           MajorDiscipline2TheoryObtained: m2TheoryObt,
-          MajorDiscipline2TotalObtained: m2TotalObt,
+          MajorDiscipline2TotalObtained: m2GradeObt,
           MajorDiscipline2Percentage: m2Perc,
           MajorDiscipline2GradePoint: m2Grade?.gradePoint ?? 0,
           MajorDiscipline2LetterGrade: m2Grade?.letterGrade,
@@ -2577,7 +2684,7 @@ class userController {
           // ======================
           // MINOR
           // ======================
-          MinorDisciplineTotalObtained: minorObt,
+          MinorDisciplineTotalObtained: minorGradeObt,
           MinorPercentage: minorPerc,
           MinorGradePoint: minorGrade?.gradePoint ?? 0,
           MinorDisciplineLetterGrade: minorGrade?.letterGrade,
@@ -2594,7 +2701,7 @@ class userController {
           TotalCpsObtained: total([Cps1, Cps2, CpsMi]),
           TotalCi: total([Ci1, Ci2, CiMi]),
           TotalSgpa: Sgpa,
-          Remarks: "Grade Calculation is according to GRADING SYSTEM @40%",
+          Remarks: "GRADING SYSTEM @40%",
           PDF: "PDF",
         };
 
