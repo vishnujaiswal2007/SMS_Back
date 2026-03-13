@@ -12,11 +12,14 @@ const upload = multer({ storage: multer.memoryStorage() });
 router.use('/chngpas', checkUserAuth)
 router.use('/getverify', checkUserAuth)
 router.use('/getdetails', checkUserAuth)
+router.use('/getdetailsNep', checkUserAuth)
 router.use('/updateRecord', checkUserAuth)
 router.use('CbcsUgProfile', checkUserAuth)
 router.use('/AdmissionNepUG', checkUserAuth)
 router.use('/upLoadMarks',checkUserAuth)
 router.use('/makeResult', checkUserAuth)
+router.use('/modifyMarks', checkUserAuth)
+
 
 
 //Public Roters
@@ -38,10 +41,12 @@ router.post(`/getDiscipline`, userController.getDiscipline)
 router.post('/chngpas', userController.changepassword)
 router.post('/getverify', userController.getVerify)
 router.post('/getdetails', userController.getdetails)
+router.post('/getdetailsNep', userController.getdetailsNep)
 router.post('/updateRecord', userController.updateRecord)
 router.post('/CbcsUgProfile', upload.single("file"), userController.CbcsUgProfile)
 router.post('/AdmissionNepUG', upload.single("file"), userController.AdmissionNepUG)
 router.post('/upLoadMarks', upload.single("file"), userController.UploadMarks)
 router.post('/makeResult', userController.MakeResult)
+router.post('/modifyMarks', userController.ModifyNepMarks)
 
 export default router
