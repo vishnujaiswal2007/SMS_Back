@@ -2214,6 +2214,15 @@ class userController {
 
         // const invalidNumber = (obt, max) => (obt>=max?"AA":obt)
 
+        const aaj = ()=>{
+          const date = new Date();
+          const day = String(date.getDate()).padStart(2, "0");
+          const month = String(date.getMonth() + 1).padStart(2, "0");
+          const year = date.getFullYear();
+          const formattedDate = `${day}/${month}/${year}`;
+          return (formattedDate)
+        }
+
         const percent = (obt, max) =>
           safeInt(max) === 0
             ? 0
@@ -2666,9 +2675,7 @@ class userController {
             MajorDiscipline1Classisfication: m1Grade?.classisfication,
             Major1Status: m1Status,
             Major1Cps: Cps1,
-            PracticalMajor1: isAbsent([s.MajorDiscipline1PracticalObtained])
-              ? "Absent"
-              : "Present",
+           
 
             // ======================
             // MAJOR 2
@@ -2704,6 +2711,8 @@ class userController {
             TotalSgpa: Sgpa,
             Remarks: "GRADING SYSTEM @40%",
             PDF: "PDF",
+            RD: "MF001",
+            DOR: aaj()
           };
 
           bulkOps.push({
@@ -2761,6 +2770,15 @@ class userController {
         const calc40 = (max) => Math.round(safeInt(max) * 0.4);
 
         const isPass = (obt, max) => safeInt(obt) >= calc40(max);
+
+        const aaj = ()=>{
+          const date = new Date();
+          const day = String(date.getDate()).padStart(2, "0");
+          const month = String(date.getMonth() + 1).padStart(2, "0");
+          const year = date.getFullYear();
+          const formattedDate = `${day}/${month}/${year}`;
+          return (formattedDate)
+        }
 
         const percent = (obt, max) =>
           safeInt(max) === 0
@@ -3092,6 +3110,8 @@ class userController {
             TotalCi: total([Ci1, Ci2, Ci3, CiMi]),
             TotalSgpa: Sgpa,
             PDF: "PDF",
+            RD: "MF001",
+            DOR: aaj()
           };
 
           bulkOps.push({
@@ -3160,14 +3180,29 @@ class userController {
       PDF: "PDF",
     };
 
+   
     const data = await database
       .collection(myobj?.SEM?.DB_CL + "_RESULT")
       .findOne(query);
 
+    const forProf = (myobj?.SEM?.DB_CL).slice(0,3)
+
+    const ProfileData = await database
+      .collection(forProf + "_PROFILE")
+      .findOne(
+        {EnrolmentNumber: data.EnrolmentNumber}
+        );
+
+        const newData = {
+          ...data, 
+          ...ProfileData
+        }
+        
+
     if (data) {
       res.status(200).send({
         status: "sucess",
-        data: data,
+        data: newData,
       });
     } else {
       res.status(400).send({
@@ -3178,6 +3213,7 @@ class userController {
   };
 
   static ModifyNepMarks = async (req, res) => {
+
     const myobj = req.body;
 
     const { SEM, ...rest } = myobj;
@@ -3203,12 +3239,15 @@ class userController {
       RollNumber: myobj.RollNumber,
       PDF: "PDF",
     };
-    const student = await database
-      .collection(myobj?.SEM?.DB_CL + "_RESULT")
-      .findOne(query);
+
+      const collection = database.collection(myobj?.SEM?.DB_CL + "_RESULT");
+
+      const student = await collection.findOne(query);
+
 
     if (student) {
       if (!(myobj?.sem?.PRG_CODE === "PRE008")) {
+
         // ======================
         // HELPER FUNCTIONS
         // ======================
@@ -3219,6 +3258,21 @@ class userController {
         const calc40 = (max) => Math.round(safeInt(max) * 0.4);
 
         const isPass = (obt, max) => safeInt(obt) >= calc40(max);
+
+        const aaj = ()=>{
+          const date = new Date();
+          const day = String(date.getDate()).padStart(2, "0");
+          const month = String(date.getMonth() + 1).padStart(2, "0");
+          const year = date.getFullYear();
+          const formattedDate = `${day}/${month}/${year}`;
+          return (formattedDate)
+        }
+
+        const roundData = (rdc)=>{
+          const v = Number(rdc.slice(-1))
+          return ("MM00" + (v+1))
+          
+        }
 
         // const invalidNumber = (obt, max) => (obt>=max?"AA":obt)
 
@@ -3674,9 +3728,9 @@ class userController {
             MajorDiscipline1Classisfication: m1Grade?.classisfication,
             Major1Status: m1Status,
             Major1Cps: Cps1,
-            PracticalMajor1: isAbsent([s.MajorDiscipline1PracticalObtained])
-              ? "Absent"
-              : "Present",
+            // PracticalMajor1: !s.MajorDiscipline1PracticalObtained? "Absent":( isAbsent([s.MajorDiscipline1PracticalObtained])
+            //   ? "Absent"
+            //   : "Present"),
 
             // ======================
             // MAJOR 2
@@ -3712,13 +3766,29 @@ class userController {
             TotalSgpa: Sgpa,
             Remarks: "GRADING SYSTEM @40%",
             PDF: "PDF",
+            RD: roundData(s.RD),
+            DOR: s.DOR,
+            DOM: aaj(),
           };
 
+          // OLD RECORD UPDATE
           bulkOps.push({
             updateOne: {
-              filter: { _id: s._id },
-              // update: { $set: { ...updateFields, ...finalResult } },
-              update: { $set: { ...finalResult } },
+              filter: { _id: student._id },
+              update: { $set: { PDF: "---" } },
+            },
+          });
+
+          // INSERT NEW REVISED RESULT
+          const { _id, ...oldStudentData } = student;
+
+          bulkOps.push({
+            insertOne: {
+              document: {
+                ...oldStudentData,
+                ...s,
+                ...finalResult,
+              },
             },
           });
 
@@ -3729,7 +3799,7 @@ class userController {
           });
         }
 
-        // if (bulkOps.length) await collection.bulkWrite(bulkOps);
+        if (bulkOps.length) await collection.bulkWrite(bulkOps);
 
         // ======================
         // EXCEL EXPORT
@@ -3776,6 +3846,23 @@ class userController {
             : Math.round((safeInt(obt) / safeInt(max)) * 100);
 
         // const isAbsent = (arr) => arr.map(safeInt).every((v) => v === 0);
+
+
+        const aaj = ()=>{
+          const date = new Date();
+          const day = String(date.getDate()).padStart(2, "0");
+          const month = String(date.getMonth() + 1).padStart(2, "0");
+          const year = date.getFullYear();
+          const formattedDate = `${day}/${month}/${year}`;
+          return (formattedDate)
+        }
+
+        const roundData = (rdc)=>{
+          const v = Number(rdc.slice(-1))
+          return ("MM00" + (v+1))
+          
+        }
+
 
         const isAbsent = (arr) =>
           arr.every((v) => v === "AA" || safeInt(v) === 0);
@@ -4100,15 +4187,32 @@ class userController {
             TotalCi: total([Ci1, Ci2, Ci3, CiMi]),
             TotalSgpa: Sgpa,
             PDF: "PDF",
+            RD: roundData(s.RD),
+            DOR: s.DOR,
+            DOM: aaj(),
           };
 
-          bulkOps.push({
-            updateOne: {
-              filter: { _id: s._id },
-              // update: { $set: { ...updateFields, ...finalResult } },
-              update: { $set: { ...finalResult } },
+         // OLD RECORD UPDATE
+         bulkOps.push({
+          updateOne: {
+            filter: { _id: student._id },
+            update: { $set: { PDF: "---" } },
+          },
+        });
+
+        // INSERT NEW REVISED RESULT
+        const { _id, ...oldStudentData } = student;
+
+        bulkOps.push({
+          insertOne: {
+            document: {
+              ...oldStudentData,
+              ...s,
+              ...finalResult,
             },
-          });
+          },
+        });
+
 
           reportRows.push({
             EnrolmentNumber: s.EnrolmentNumber,
@@ -4117,7 +4221,7 @@ class userController {
           });
         }
 
-        // if (bulkOps.length) await collection.bulkWrite(bulkOps);
+        if (bulkOps.length) await collection.bulkWrite(bulkOps);
 
         // ======================
         // EXCEL EXPORT
@@ -4143,10 +4247,11 @@ class userController {
         return res.send(buffer);
       }
     } else {
-      res.status(400).send({
+
+      return res.status(400).json({
         status: "Fail",
-        message: "Student No Found....",
-      });
+        message: "Student Not Found..."
+      })
     }
   };
 }
