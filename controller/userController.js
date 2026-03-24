@@ -5,14 +5,11 @@ var URL = process.env.Data_URL;
 // import {createRequire} from 'module';
 // var require = createRequire(import.meta.url);
 
-import { Int32, MongoClient, ObjectId } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import transporter from "../config/emailconfig.js";
-import fs from "fs";
 import * as XLSX from "xlsx";
-import { url } from "inspector";
-import { stringify } from "querystring";
 
 class userController {
   static userRegistration = async (req, res) => {
@@ -3185,6 +3182,13 @@ class userController {
       .collection(myobj?.SEM?.DB_CL + "_RESULT")
       .findOne(query);
 
+      if (!data) {
+        return res.status(401).json({
+          status: "Fail",
+          message: "Record Not Found! Report to System Manager please....",
+        });
+      }
+
     const forProf = (myobj?.SEM?.DB_CL).slice(0,3)
 
     const ProfileData = await database
@@ -3773,56 +3777,100 @@ class userController {
 
           // OLD RECORD UPDATE
           bulkOps.push({
-            updateOne: {
-              filter: { _id: student._id },
-              update: { $set: { PDF: "---" } },
+            updateMany: {
+              filter: {
+                RollNumber: s.RollNumber,
+                Session: s.Session,
+                PDF: "PDF", // 🔥 current final record only
+              },
+              update: {
+                $set: { PDF: "---" },
+              },
             },
           });
 
           // INSERT NEW REVISED RESULT
           const { _id, ...oldStudentData } = student;
 
+          //extra safety
+
+          delete oldStudentData._id;
+          delete s._id;
+          delete finalResult._id;
+
           bulkOps.push({
             insertOne: {
               document: {
+                _id: new ObjectId(),
                 ...oldStudentData,
                 ...s,
                 ...finalResult,
+                PDF: "PDF",
               },
             },
           });
+
 
           reportRows.push({
             EnrolmentNumber: s.EnrolmentNumber,
             RollNumber: s.RollNumber,
             ...finalResult,
+            
           });
         }
+        
 
-        if (bulkOps.length) await collection.bulkWrite(bulkOps);
-
-        // ======================
-        // EXCEL EXPORT
-        // ======================
-        const workbook = XLSX.utils.book_new();
-        const worksheet = XLSX.utils.json_to_sheet(reportRows);
-        XLSX.utils.book_append_sheet(workbook, worksheet, "ResultReport");
-
-        const buffer = XLSX.write(workbook, {
-          bookType: "xlsx",
-          type: "buffer",
-        });
-
-        res.setHeader(
-          "Content-Disposition",
-          "attachment; filename=ResultReport.xlsx"
-        );
-        res.setHeader(
-          "Content-Type",
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        );
-
-        return res.send(buffer);
+        try {
+          if (bulkOps.length) {
+            const result = await collection.bulkWrite(bulkOps, {
+              ordered: true, // 🔥 better
+            });
+        
+            // 🔥 YAHI PAR ADD KARNA HAI
+            if (req.query.export === "excel") {
+        
+              if (!reportRows.length) {
+                return res.status(400).json({
+                  message: "No data to export",
+                });
+              }
+        
+              const workbook = XLSX.utils.book_new();
+              const worksheet = XLSX.utils.json_to_sheet(reportRows);
+              XLSX.utils.book_append_sheet(workbook, worksheet, "ResultReport");
+        
+              const buffer = XLSX.write(workbook, {
+                bookType: "xlsx",
+                type: "buffer",
+              });
+        
+              res.setHeader(
+                "Content-Disposition",
+                "attachment; filename=ResultReport.xlsx"
+              );
+              res.setHeader(
+                "Content-Type",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              );
+        
+              return res.send(buffer);
+            }
+        
+            // 🔥 NORMAL JSON RESPONSE
+            return res.status(200).json({
+              status: "success",
+              message: "Modification Done",
+              inserted: result.insertedCount,
+              modified: result.modifiedCount,
+            });
+          }
+        
+          return res.status(200).send("No operations");
+        
+        } catch (error) {
+          console.log(error)
+        }
+      
       }
 
       // ======================================================================================================
@@ -4192,27 +4240,39 @@ class userController {
             DOM: aaj(),
           };
 
-         // OLD RECORD UPDATE
-         bulkOps.push({
-          updateOne: {
-            filter: { _id: student._id },
-            update: { $set: { PDF: "---" } },
-          },
-        });
-
-        // INSERT NEW REVISED RESULT
-        const { _id, ...oldStudentData } = student;
-
-        bulkOps.push({
-          insertOne: {
-            document: {
-              ...oldStudentData,
-              ...s,
-              ...finalResult,
+          // OLD RECORD UPDATE
+          bulkOps.push({
+            updateMany: {
+              filter: {
+                RollNumber: s.RollNumber,
+                Session: s.Session,
+                PDF: "PDF",
+              },
+              update: {
+                $set: { PDF: "---" },
+              },
             },
-          },
-        });
+          });
 
+          // INSERT NEW REVISED RESULT
+          const { _id, ...oldStudentData } = student;
+
+          // extra safety
+          delete oldStudentData._id;
+          delete s._id;
+          delete finalResult._id;
+
+          bulkOps.push({
+            insertOne: {
+              document: {
+                _id: new ObjectId(), // ✅ new unique id
+                ...oldStudentData,
+                ...s,
+                ...finalResult,
+                PDF: "PDF", // 🔥 FINAL OVERRIDE
+              },
+            },
+          });
 
           reportRows.push({
             EnrolmentNumber: s.EnrolmentNumber,
@@ -4221,30 +4281,56 @@ class userController {
           });
         }
 
-        if (bulkOps.length) await collection.bulkWrite(bulkOps);
-
-        // ======================
-        // EXCEL EXPORT
-        // ======================
-        const workbook = XLSX.utils.book_new();
-        const worksheet = XLSX.utils.json_to_sheet(reportRows);
-        XLSX.utils.book_append_sheet(workbook, worksheet, "ResultReport");
-
-        const buffer = XLSX.write(workbook, {
-          bookType: "xlsx",
-          type: "buffer",
-        });
-
-        res.setHeader(
-          "Content-Disposition",
-          "attachment; filename=ResultReport.xlsx"
-        );
-        res.setHeader(
-          "Content-Type",
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        );
-
-        return res.send(buffer);
+        try {
+          if (bulkOps.length) {
+            const result = await collection.bulkWrite(bulkOps, {
+              ordered: true, // 🔥 better
+            });
+        
+            // 🔥 YAHI PAR ADD KARNA HAI
+            if (req.query.export === "excel") {
+        
+              if (!reportRows.length) {
+                return res.status(400).json({
+                  message: "No data to export",
+                });
+              }
+        
+              const workbook = XLSX.utils.book_new();
+              const worksheet = XLSX.utils.json_to_sheet(reportRows);
+              XLSX.utils.book_append_sheet(workbook, worksheet, "ResultReport");
+        
+              const buffer = XLSX.write(workbook, {
+                bookType: "xlsx",
+                type: "buffer",
+              });
+        
+              res.setHeader(
+                "Content-Disposition",
+                "attachment; filename=ResultReport.xlsx"
+              );
+              res.setHeader(
+                "Content-Type",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              );
+        
+              return res.send(buffer);
+            }
+        
+            // 🔥 NORMAL JSON RESPONSE
+            return res.status(200).json({
+              status: "success",
+              message: "Modification Done",
+              inserted: result.insertedCount,
+              modified: result.modifiedCount,
+            });
+          }
+        
+          return res.status(200).send("No operations");
+        
+        } catch (error) {
+          console.log(error)
+        }
       }
     } else {
 
