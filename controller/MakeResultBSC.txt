@@ -323,12 +323,12 @@
         const minorMax = total([
           s.MinorDisciplinePaperMax,
           s.MinorDisciplineCiaMax,
-          s.MinorDisciplinePracticleMax,
+          s.MinorDisciplinePracticalMax,
         ]);
 
         const MinorPracticalStatus = isPass(
           safeInt(s.MinorDisciplinePracticalObtained),
-          safeInt(s.MinorDisciplinePracticleMax)
+          safeInt(s.MinorDisciplinePracticalMax)
         )
           ? "PASS"
           : "FAIL";

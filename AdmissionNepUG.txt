@@ -186,17 +186,17 @@
                   MajorDiscipline1CiaMax: disciplineMajor1Details.MajorCiaMax,
                   MajorDiscipline1CiaObtained: "",
                 }),
-                ...(disciplineMajor1Details?.MajorPracticleMax != null && {
-                  MajorDiscipline1PracticleMax:
-                    disciplineMajor1Details.MajorPracticleMax,
-                  MajorDiscipline1PracticleObtained: "",
+                ...(disciplineMajor1Details?.MajorPracticalMax != null && {
+                  MajorDiscipline1PracticalMax:
+                    disciplineMajor1Details.MajorPracticalMax,
+                  MajorDiscipline1PracticalObtained: "",
                 }),
 
-                ...(disciplineMajor1Details?.MajorPracticleCreditMax !=
+                ...(disciplineMajor1Details?.MajorPracticalCreditMax !=
                   null && {
-                  MajorDiscipline1PracticleCreditMax:
-                    disciplineMajor1Details.MajorPracticleCreditMax,
-                  MajorDiscipline1PracticleObtained: "",
+                  MajorDiscipline1PracticalCreditMax:
+                    disciplineMajor1Details.MajorPracticalCreditMax,
+                  MajorDiscipline1PracticalObtained: "",
                 }),
                 ...(disciplineMajor1Details?.MajorTotalMax != null && {
                   MajorDiscipline1TotalMax:
@@ -277,16 +277,16 @@
                   MajorDiscipline2CiaMax: disciplineMajor2Details?.MajorCiaMax,
                   MajorDiscipline2CiaObtained: "",
                 }),
-                ...(disciplineMajor2Details?.MajorPracticleMax != null && {
-                  MajorDiscipline2PracticleMax:
-                    disciplineMajor2Details?.MajorPracticleMax,
-                  MajorDiscipline2PracticleObtained: "",
+                ...(disciplineMajor2Details?.MajorPracticalMax != null && {
+                  MajorDiscipline2PracticalMax:
+                    disciplineMajor2Details?.MajorPracticalMax,
+                  MajorDiscipline2PracticalObtained: "",
                 }),
-                ...(disciplineMajor2Details?.MajorPracticleCreditMax !=
+                ...(disciplineMajor2Details?.MajorPracticalCreditMax !=
                   null && {
-                  MajorDiscipline2PracticleCreditMax:
-                    disciplineMajor2Details?.MajorPracticleCreditMax,
-                  MajorDiscipline2PracticleCreditObtained: "",
+                  MajorDiscipline2PracticalCreditMax:
+                    disciplineMajor2Details?.MajorPracticalCreditMax,
+                  MajorDiscipline2PracticalCreditObtained: "",
                 }),
                 ...(disciplineMajor2Details?.MajorTotalMax != null && {
                   MajorDiscipline2TotalMax:
@@ -365,16 +365,16 @@
                   MajorDiscipline3CiaMax: disciplineMajor3Details?.MajorCiaMax,
                   MajorDiscipline3CiaObtained: "",
                 }),
-                ...(disciplineMajor3Details?.MajorPracticleMax != null && {
-                  MajorDiscipline3PracticleMax:
-                    disciplineMajor3Details?.MajorPracticleMax,
-                  MajorDiscipline3PracticleObtained: "",
+                ...(disciplineMajor3Details?.MajorPracticalMax != null && {
+                  MajorDiscipline3PracticalMax:
+                    disciplineMajor3Details?.MajorPracticalMax,
+                  MajorDiscipline3PracticalObtained: "",
                 }),
-                ...(disciplineMajor3Details?.MajorPracticleCreditMax !=
+                ...(disciplineMajor3Details?.MajorPracticalCreditMax !=
                   null && {
-                  MajorDiscipline3PracticleCreditMax:
-                    disciplineMajor3Details?.MajorPracticleCreditMax,
-                  MajorDiscipline3PracticleCreditObtained: "",
+                  MajorDiscipline3PracticalCreditMax:
+                    disciplineMajor3Details?.MajorPracticalCreditMax,
+                  MajorDiscipline3PracticalCreditObtained: "",
                 }),
                 ...(disciplineMajor3Details?.MajorTotalMax != null && {
                   MajorDiscipline3TotalMax:
@@ -638,17 +638,17 @@
                   MajorDiscipline1CiaMax: disciplineMajor1Details.MajorCiaMax,
                   MajorDiscipline1CiaObtained: "",
                 }),
-                ...(disciplineMajor1Details?.MajorPracticleMax != null && {
-                  MajorDiscipline1PracticleMax:
-                    disciplineMajor1Details.MajorPracticleMax,
-                  MajorDiscipline1PracticleObtained: "",
+                ...(disciplineMajor1Details?.MajorPracticalMax != null && {
+                  MajorDiscipline1PracticalMax:
+                    disciplineMajor1Details.MajorPracticalMax,
+                  MajorDiscipline1PracticalObtained: "",
                 }),
 
-                ...(disciplineMajor1Details?.MajorPracticleCreditMax !=
+                ...(disciplineMajor1Details?.MajorPracticalCreditMax !=
                   null && {
-                  MajorDiscipline1PracticleCreditMax:
-                    disciplineMajor1Details.MajorPracticleCreditMax,
-                  MajorDiscipline1PracticleObtained: "",
+                  MajorDiscipline1PracticalCreditMax:
+                    disciplineMajor1Details.MajorPracticalCreditMax,
+                  MajorDiscipline1PracticalObtained: "",
                 }),
                 ...(disciplineMajor1Details?.MajorTotalMax != null && {
                   MajorDiscipline1TotalMax:
@@ -732,16 +732,16 @@
                   MajorDiscipline2CiaMax: disciplineMajor2Details?.MajorCiaMax,
                   MajorDiscipline2CiaObtained: "",
                 }),
-                ...(disciplineMajor2Details?.MajorPracticleMax != null && {
-                  MajorDiscipline2PracticleMax:
-                    disciplineMajor2Details?.MajorPracticleMax,
-                  MajorDiscipline2PracticleObtained: "",
+                ...(disciplineMajor2Details?.MajorPracticalMax != null && {
+                  MajorDiscipline2PracticalMax:
+                    disciplineMajor2Details?.MajorPracticalMax,
+                  MajorDiscipline2PracticalObtained: "",
                 }),
-                ...(disciplineMajor2Details?.MajorPracticleCreditMax !=
+                ...(disciplineMajor2Details?.MajorPracticalCreditMax !=
                   null && {
-                  MajorDiscipline2PracticleCreditMax:
-                    disciplineMajor2Details?.MajorPracticleCreditMax,
-                  MajorDiscipline2PracticleCreditObtained: "",
+                  MajorDiscipline2PracticalCreditMax:
+                    disciplineMajor2Details?.MajorPracticalCreditMax,
+                  MajorDiscipline2PracticalCreditObtained: "",
                 }),
                 ...(disciplineMajor2Details?.MajorTotalMax != null && {
                   MajorDiscipline2TotalMax:

@@ -305,7 +305,7 @@
 
         const minorTotalMax = total([minorMax, s.MinorDisciplineCiaMax,]);
 
-        const minorHasPractical = safeInt(s.MinorDisciplinePracticleMax) > 0;
+        const minorHasPractical = safeInt(s.MinorDisciplinePracticalMax) > 0;
 
         const minorPractical = safeInt(s.MinorDisciplinePracticalObtained);
 
@@ -320,7 +320,7 @@
         const minorGradeMax = total([
           s.MinorDisciplinePaperMax,
           s.MinorDisciplineCiaMax,
-          s.MinorDisciplinePracticleMax,
+          s.MinorDisciplinePracticalMax,
         ]);
 
          // ---- outputs ----
@@ -345,7 +345,7 @@
            minorHasPractical &&
            !isPass(
             minorPractical,
-            s.MinorDisciplinePracticleMax
+            s.MinorDisciplinePracticalMax
            )
          ) {
           minorPass = false;
