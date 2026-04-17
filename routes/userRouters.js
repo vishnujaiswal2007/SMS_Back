@@ -19,6 +19,7 @@ router.use('/AdmissionNepUG', checkUserAuth)
 router.use('/upLoadMarks',checkUserAuth)
 router.use('/makeResult', checkUserAuth)
 router.use('/modifyMarks', checkUserAuth)
+router.use('/subjectModify', checkUserAuth)
 
 
 
@@ -35,6 +36,7 @@ router.post('/desig',userController.getDesig)
 router.get(`/getUnit`, userController.getUnit)
 router.post(`/getPapers`, userController.getPapers)
 router.post(`/getDiscipline`, userController.getDiscipline)
+router.post(`/getAllDiscipline`, userController.getAllDescipline)
 
 
 //Private Routers
@@ -48,5 +50,6 @@ router.post('/AdmissionNepUG', upload.single("file"), userController.AdmissionNe
 router.post('/upLoadMarks', upload.single("file"), userController.UploadMarks)
 router.post('/makeResult', userController.MakeResult)
 router.post('/modifyMarks', userController.ModifyNepMarks)
+router.use('/subjectModify', userController.SubjectModify)
 
 export default router

@@ -1,0 +1,112 @@
+static SubjectModify = async (req, res) => {
+  try {
+
+    // -----------------------------
+      // BASIC DATE INFO
+      // -----------------------------
+      const date = new Date();
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+      const formattedDate = `${day}/${month}/${year}`;
+
+      // -----------------------------
+      // REAL Programe
+      // -----------------------------
+
+    const myobj = req.body;
+
+    const client = new MongoClient(URL);
+    await client.connect();
+
+    const database = client.db("NepUG");
+    const collection = database.collection(myobj.SEM.DB_CL + "_RESULT");
+
+    const database1 = client.db("NEP");
+    const papers = await database1.collection("PaperDetails").find({}).toArray()
+   
+    
+    // 🔍 Candidate check
+    const candidate = await collection.findOne({
+      RollNumber: myobj.RollNumber,
+      PDF: "PDF",
+    });
+
+    if (!candidate) {
+      return res.status(404).send("Candidate not found");
+    }
+
+     // -----------------------------
+    // 🔥 SUBJECT KEYS
+    // -----------------------------
+    const subjectKeys = Object.keys(myobj).filter(
+      (k) => !["SEM", "RollNumber"].includes(k)
+    );
+   
+
+    const unsetFields = {};
+
+    // -----------------------------
+    // 🔥 DELETE FUNCTION
+    // -----------------------------
+    const addFieldsToUnset = (key) => {
+      Object.keys(candidate).forEach((field) => {
+        // 👉 jo bhi field same prefix se start hota hai delete karo
+        if (field.startsWith(key)) {
+          unsetFields[field] = "";
+        }
+      });
+    };
+
+    // -----------------------------
+    // 🔥 DELETE FULL DISCIPLINE DATA
+    // -----------------------------
+  for (const key of subjectKeys) {
+    Object.keys(candidate).forEach((field) => {
+      if (field.startsWith(key)) {
+        unsetFields[field] = true;
+      }
+    });
+  }
+
+// -----------------------------
+// 🧹 REMOVE FROM candidate OBJECT
+// -----------------------------
+const updatedCandidate = { ...candidate }; // clone
+
+Object.keys(unsetFields).forEach((field) => {
+  delete updatedCandidate[field];
+});
+
+
+
+const getType = (key) => {
+  if (key.startsWith("Major")) return "Major";
+  if (key.startsWith("Minor")) return "Minor";
+  return null;
+};
+
+
+
+for (const k of subjectKeys) {
+  const dsp = myobj[k];        // e.g. ASOC1101-SOCIOLOGY
+  const type = getType(k);     // Major / Minor
+
+  const matchedPapers = papers.filter(
+    (p) =>
+      p.DISCIPLINE === dsp && p.CBCS_CATEGORY === type?.toUpperCase()
+  );
+
+}
+   
+    res.send({
+      status: "OK",
+      message: "Done",
+    
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server Error");
+  }
+};

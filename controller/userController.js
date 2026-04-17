@@ -110,7 +110,7 @@ class userController {
             process.env.JWT_SECRET_KEY,
             {
               expiresIn: "1d",
-            }
+            },
           );
           // res.cookie('jwt', token)
           // res.set('Authorization', 'Bearer '+ token);
@@ -153,7 +153,7 @@ class userController {
         const collection = database.collection("users");
         await collection.findOneAndUpdate(
           { _id: new ObjectId(req.user._id) },
-          { $set: { password: NewHashPassword } }
+          { $set: { password: NewHashPassword } },
         );
 
         res.status(200).send({
@@ -206,7 +206,7 @@ class userController {
         .collection("COURSE_DETAILS")
         .find(
           { PRG_CODE: req.body.PRG },
-          { projection: { sem: 1, DB_CL: 1, COURSE: 1 } }
+          { projection: { sem: 1, DB_CL: 1, COURSE: 1 } },
         )
         .toArray(function (err, result) {
           if (err) throw err;
@@ -299,7 +299,7 @@ class userController {
             .collection("users")
             .findOneAndUpdate(
               { _id: new ObjectId(user._id) },
-              { $set: { password: newpass } }
+              { $set: { password: newpass } },
             );
           res.send({
             status: "Sucess",
@@ -591,7 +591,7 @@ class userController {
       const candidate = database1.collection(PRG);
       await candidate.updateOne(
         { EN: req.body.EN, PDF: "PDF" },
-        { $set: { PDF: "---" } }
+        { $set: { PDF: "---" } },
       );
       // new data without _id
       const dataToInsert = { ...req.body };
@@ -1615,13 +1615,13 @@ class userController {
 
       if (profileData.length > 0) {
         await AdmissionDB.collection(`${program.DB_CL}_PROFILE`).insertMany(
-          profileData
+          profileData,
         );
       }
 
       if (resultData.length > 0) {
         await AdmissionDB.collection(`${program.DB_CL}1_RESULT`).insertMany(
-          resultData
+          resultData,
         );
       }
 
@@ -1644,15 +1644,15 @@ class userController {
 
         res.setHeader(
           "Content-Disposition",
-          "attachment; filename=wrong_Data_codes.xlsx"
+          "attachment; filename=wrong_Data_codes.xlsx",
         );
         res.setHeader(
           "Content-Type",
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         );
         res.setHeader(
           "X-Message",
-          `Total ${recordsToInsert.length} valid candidates`
+          `Total ${recordsToInsert.length} valid candidates`,
         );
 
         return res.send(exportBuffer);
@@ -1700,90 +1700,210 @@ class userController {
     }
   };
 
-//============
-// Upload of Marks / Skill
-//============
+  //============
+  // Upload of Marks / Skill
+  //============
 
-static UploadMarks = async (req, res) => {
-  if (!req.file) {
-    return res.status(400).send({
-      status: "Fail",
-      message: "Excel file is required",
-    });
-  }
-
-  const client = new MongoClient(URL);
-
-  try {
-    // =========================
-    // READ EXCEL
-    // =========================
-    const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const data = XLSX.utils.sheet_to_json(sheet);
-
-    if (!data.length) {
-      return res.send({ status: "Fail", message: "Excel file is empty" });
-    }
-
-    const excelColumns = Object.keys(data[0]);
-
-    // =========================
-    // DETECT TYPE
-    // =========================
-    const isSkillUpload =
-      ["RN", "EN", "GRADE", "sk"].every((c) =>
-        excelColumns.includes(c)
-      );
-
-    const isMarksUpload =
-      ["rn", "sb", "pa", "en", "cat", "mrk11"].every((c) =>
-        excelColumns.includes(c)
-      );
-
-    if (!isSkillUpload && !isMarksUpload) {
-      return res.send({
+  static UploadMarks = async (req, res) => {
+    if (!req.file) {
+      return res.status(400).send({
         status: "Fail",
-        message: "Invalid Excel format",
+        message: "Excel file is required",
       });
     }
 
-    await client.connect();
+    const client = new MongoClient(URL);
 
-    const myobj = req.body;
-    const resultCol = client.db("NepUG").collection(myobj.DB_CL + "_RESULT");
-    const nepDB = client.db("NEP");
+    try {
+      // =========================
+      // READ EXCEL
+      // =========================
+      const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(sheet);
 
-    const sessionCandidates = await resultCol
-      .find({ Session: myobj.session })
-      .toArray();
+      if (!data.length) {
+        return res.send({ status: "Fail", message: "Excel file is empty" });
+      }
 
-    // ⚡ FAST LOOKUP MAP
-    const candidateMap = new Map();
-    sessionCandidates.forEach((c) => {
-      const key = `${String(c.EnrolmentNumber).trim()}_${String(c.RollNumber).trim()}`;
-      candidateMap.set(key, c);
-    });
+      const excelColumns = Object.keys(data[0]);
 
-    // =========================================================
-    // ==================== SKILL UPLOAD ========================
-    // =========================================================
-    if (isSkillUpload) {
+      // =========================
+      // DETECT TYPE
+      // =========================
+      const isSkillUpload = ["RN", "EN", "GRADE", "sk"].every((c) =>
+        excelColumns.includes(c),
+      );
+
+      const isMarksUpload = ["rn", "sb", "pa", "en", "cat", "mrk11"].every(
+        (c) => excelColumns.includes(c),
+      );
+
+      if (!isSkillUpload && !isMarksUpload) {
+        return res.send({
+          status: "Fail",
+          message: "Invalid Excel format",
+        });
+      }
+
+      await client.connect();
+
+      const myobj = req.body;
+      const resultCol = client.db("NepUG").collection(myobj.DB_CL + "_RESULT");
+      const nepDB = client.db("NEP");
+
+      const sessionCandidates = await resultCol
+        .find({ Session: myobj.session })
+        .toArray();
+
+      // ⚡ FAST LOOKUP MAP
+      const candidateMap = new Map();
+      sessionCandidates.forEach((c) => {
+        const key = `${String(c.EnrolmentNumber).trim()}_${String(c.RollNumber).trim()}`;
+        candidateMap.set(key, c);
+      });
+
+      // =========================================================
+      // ==================== SKILL UPLOAD ========================
+      // =========================================================
+      if (isSkillUpload) {
+        const reportRows = [];
+        const bulkOps = [];
+
+        for (const [index, dt] of data.entries()) {
+          const report = {
+            row: index + 2,
+            RollNumber: dt.RN,
+            EnrolmentNumber: dt.EN,
+            Skill: dt.sk,
+            Grade: dt.GRADE,
+            Status: "FAILED",
+            Reason: "",
+          };
+
+          const key = `${String(dt.EN).trim()}_${String(dt.RN).trim()}`;
+          const candidate = candidateMap.get(key);
+
+          if (!candidate) {
+            report.Reason = "Candidate not found";
+            reportRows.push(report);
+            continue;
+          }
+
+          let grade = dt.GRADE;
+
+          if (!grade) {
+            report.Reason = "Grade missing";
+            reportRows.push(report);
+            continue;
+          }
+
+          grade = grade.toString().trim().toUpperCase();
+
+          // Already filled check
+          if (candidate.SkillGrade) {
+            report.Reason = "Skill already uploaded";
+            reportRows.push(report);
+            continue;
+          }
+
+          bulkOps.push({
+            updateOne: {
+              filter: { _id: candidate._id },
+              update: {
+                $set: {
+                  Skill: dt.sk,
+                  SkillGrade: grade,
+                },
+              },
+            },
+          });
+
+          report.Status = "UPDATED";
+          report.Reason = "Skill uploaded successfully";
+          reportRows.push(report);
+        }
+
+        if (bulkOps.length) {
+          await resultCol.bulkWrite(bulkOps);
+        }
+
+        const reportSheet = XLSX.utils.json_to_sheet(reportRows);
+        const reportBook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(reportBook, reportSheet, "Skill Report");
+
+        const buffer = XLSX.write(reportBook, {
+          bookType: "xlsx",
+          type: "buffer",
+        });
+
+        res.setHeader(
+          "Content-Disposition",
+          "attachment; filename=SkillUploadReport.xlsx",
+        );
+        res.setHeader(
+          "Content-Type",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        );
+
+        return res.send(buffer);
+      }
+
+      // =========================================================
+      // ==================== MARKS UPLOAD ========================
+      // =========================================================
+
       const reportRows = [];
       const bulkOps = [];
+
+      const updateIfValid = (
+        candidate,
+        updateFields,
+        report,
+        obtainedField,
+        maxField,
+        marks,
+      ) => {
+        if (
+          candidate[obtainedField] !== "" &&
+          candidate[obtainedField] != null
+        ) {
+          return false;
+        }
+
+        if (Number(marks) > candidate[maxField]) {
+          report.Reason = "Marks greater than maximum";
+          return false;
+        }
+
+        updateFields[obtainedField] = marks;
+        return true;
+      };
 
       for (const [index, dt] of data.entries()) {
         const report = {
           row: index + 2,
-          RollNumber: dt.RN,
-          EnrolmentNumber: dt.EN,
-          Skill: dt.sk,
-          Grade: dt.GRADE,
+          RollNumber: dt.rn,
+          EnrolmentNumber: dt.en,
+          Marks: dt.mrk11,
           Status: "FAILED",
           Reason: "",
         };
 
-        const key = `${String(dt.EN).trim()}_${String(dt.RN).trim()}`;
+        const discipline = await nepDB
+          .collection("DiciplineDetails")
+          .findOne({ Number_Code: parseInt(dt.sb) });
+
+        if (!discipline) {
+          report.Reason = "Discipline not found";
+          reportRows.push(report);
+          continue;
+        }
+
+        const disciplineName = discipline.DISCIPLINE.trim();
+        report.Discipline = disciplineName;
+
+        const key = `${String(dt.en).trim()}_${String(dt.rn).trim()}`;
         const candidate = candidateMap.get(key);
 
         if (!candidate) {
@@ -1792,19 +1912,195 @@ static UploadMarks = async (req, res) => {
           continue;
         }
 
-        let grade = dt.GRADE;
+        const paCode = Number(dt.pa);
 
-        if (!grade) {
-          report.Reason = "Grade missing";
-          reportRows.push(report);
-          continue;
+        const isMajorTheory = paCode >= 1 && paCode <= 3;
+        const isMajorPractical = paCode === 6;
+        const isMajorCIA = paCode === 7;
+
+        const isMinorTheory = paCode === 0;
+        const isMinorPractical = paCode === 5;
+        const isMinorCIA = paCode === 4;
+
+        const disciplineConfig = [
+          {
+            key: "MajorDiscipline1",
+            enabled: true,
+            cia: {
+              obt: "MajorDiscipline1CiaObtained",
+              max: "MajorDiscipline1CiaMax",
+            },
+            papers: [
+              {
+                obt: "MajorDiscipline1Paper1Obtained",
+                max: "MajorDiscipline1Paper1Max",
+              },
+              {
+                obt: "MajorDiscipline1Paper2Obtained",
+                max: "MajorDiscipline1Paper2Max",
+              },
+              {
+                obt: "MajorDiscipline1Paper3Obtained",
+                max: "MajorDiscipline1Paper3Max",
+              },
+            ],
+            practical: {
+              obt: "MajorDiscipline1PracticalObtained",
+              max: "MajorDiscipline1PracticalMax",
+            },
+          },
+          {
+            key: "MajorDiscipline2",
+            enabled: true,
+            cia: {
+              obt: "MajorDiscipline2CiaObtained",
+              max: "MajorDiscipline2CiaMax",
+            },
+            papers: [
+              {
+                obt: "MajorDiscipline2Paper1Obtained",
+                max: "MajorDiscipline2Paper1Max",
+              },
+              {
+                obt: "MajorDiscipline2Paper2Obtained",
+                max: "MajorDiscipline2Paper2Max",
+              },
+              {
+                obt: "MajorDiscipline2Paper3Obtained",
+                max: "MajorDiscipline2Paper3Max",
+              },
+            ],
+            practical: {
+              obt: "MajorDiscipline2PracticalObtained",
+              max: "MajorDiscipline2PracticalMax",
+            },
+          },
+          {
+            key: "MajorDiscipline3",
+            enabled: myobj.PRG_Code === "PRE008",
+            cia: {
+              obt: "MajorDiscipline3CiaObtained",
+              max: "MajorDiscipline3CiaMax",
+            },
+            papers: [
+              {
+                obt: "MajorDiscipline3Paper1Obtained",
+                max: "MajorDiscipline3Paper1Max",
+              },
+              {
+                obt: "MajorDiscipline3Paper2Obtained",
+                max: "MajorDiscipline3Paper2Max",
+              },
+              {
+                obt: "MajorDiscipline3Paper3Obtained",
+                max: "MajorDiscipline3Paper3Max",
+              },
+            ],
+          },
+          {
+            key: "MinorDiscipline",
+            enabled: true,
+            cia: {
+              obt: "MinorDisciplineCiaObtained",
+              max: "MinorDisciplineCiaMax",
+            },
+            papers: [
+              {
+                obt: "MinorDisciplinePaperObtained",
+                max: "MinorDisciplinePaperMax",
+              },
+            ],
+            practical: {
+              obt: "MinorDisciplinePracticalObtained",
+              max: "MinorDisciplinePracticalMax",
+            },
+          },
+        ];
+
+        const updateFields = {};
+        let updated = false;
+
+        for (const d of disciplineConfig) {
+          if (!d.enabled) continue;
+          if (candidate[d.key] !== disciplineName) continue;
+
+          let marks = dt.mrk11;
+          if (marks === "" || marks === null || marks === undefined) {
+            marks = "AA";
+          }
+
+          if (isMajorCIA && d.key.startsWith("Major")) {
+            updated ||= updateIfValid(
+              candidate,
+              updateFields,
+              report,
+              d.cia.obt,
+              d.cia.max,
+              marks,
+            );
+          } else if (isMinorCIA && d.key === "MinorDiscipline") {
+            updated ||= updateIfValid(
+              candidate,
+              updateFields,
+              report,
+              d.cia.obt,
+              d.cia.max,
+              marks,
+            );
+          } else if (
+            isMajorPractical &&
+            d.key.startsWith("Major") &&
+            d.practical
+          ) {
+            updated ||= updateIfValid(
+              candidate,
+              updateFields,
+              report,
+              d.practical.obt,
+              d.practical.max,
+              marks,
+            );
+          } else if (
+            isMinorPractical &&
+            d.key === "MinorDiscipline" &&
+            d.practical
+          ) {
+            updated ||= updateIfValid(
+              candidate,
+              updateFields,
+              report,
+              d.practical.obt,
+              d.practical.max,
+              marks,
+            );
+          } else if (isMajorTheory && d.key.startsWith("Major")) {
+            const paperIndex = Number(paCode) - 1;
+            if (paperIndex >= 0 && paperIndex < d.papers.length) {
+              const paper = d.papers[paperIndex];
+              updated ||= updateIfValid(
+                candidate,
+                updateFields,
+                report,
+                paper.obt,
+                paper.max,
+                marks,
+              );
+            }
+          } else if (isMinorTheory && d.key === "MinorDiscipline") {
+            const paper = d.papers[0];
+            updated ||= updateIfValid(
+              candidate,
+              updateFields,
+              report,
+              paper.obt,
+              paper.max,
+              marks,
+            );
+          }
         }
 
-        grade = grade.toString().trim().toUpperCase();
-
-        // Already filled check
-        if (candidate.SkillGrade) {
-          report.Reason = "Skill already uploaded";
+        if (!updated) {
+          report.Reason ||= "Paper not linked or marks already uploaded";
           reportRows.push(report);
           continue;
         }
@@ -1812,17 +2108,12 @@ static UploadMarks = async (req, res) => {
         bulkOps.push({
           updateOne: {
             filter: { _id: candidate._id },
-            update: {
-              $set: {
-                Skill: dt.sk,
-                SkillGrade: grade,
-              },
-            },
+            update: { $set: updateFields },
           },
         });
 
         report.Status = "UPDATED";
-        report.Reason = "Skill uploaded successfully";
+        report.Reason = "Marks uploaded successfully";
         reportRows.push(report);
       }
 
@@ -1832,7 +2123,7 @@ static UploadMarks = async (req, res) => {
 
       const reportSheet = XLSX.utils.json_to_sheet(reportRows);
       const reportBook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(reportBook, reportSheet, "Skill Report");
+      XLSX.utils.book_append_sheet(reportBook, reportSheet, "Upload Report");
 
       const buffer = XLSX.write(reportBook, {
         bookType: "xlsx",
@@ -1841,219 +2132,24 @@ static UploadMarks = async (req, res) => {
 
       res.setHeader(
         "Content-Disposition",
-        "attachment; filename=SkillUploadReport.xlsx"
+        "attachment; filename=MarksUploadReport.xlsx",
       );
       res.setHeader(
         "Content-Type",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       );
 
       return res.send(buffer);
-    }
-
-    // =========================================================
-    // ==================== MARKS UPLOAD ========================
-    // =========================================================
-
-    const reportRows = [];
-    const bulkOps = [];
-
-    const updateIfValid = (
-      candidate,
-      updateFields,
-      report,
-      obtainedField,
-      maxField,
-      marks
-    ) => {
-      if (
-        candidate[obtainedField] !== "" &&
-        candidate[obtainedField] != null
-      ) {
-        return false;
-      }
-
-      if (Number(marks) > candidate[maxField]) {
-        report.Reason = "Marks greater than maximum";
-        return false;
-      }
-
-      updateFields[obtainedField] = marks;
-      return true;
-    };
-
-    for (const [index, dt] of data.entries()) {
-      const report = {
-        row: index + 2,
-        RollNumber: dt.rn,
-        EnrolmentNumber: dt.en,
-        Marks: dt.mrk11,
-        Status: "FAILED",
-        Reason: "",
-      };
-
-      const discipline = await nepDB
-        .collection("DiciplineDetails")
-        .findOne({ Number_Code: parseInt(dt.sb) });
-
-      if (!discipline) {
-        report.Reason = "Discipline not found";
-        reportRows.push(report);
-        continue;
-      }
-
-      const disciplineName = discipline.DISCIPLINE.trim();
-      report.Discipline = disciplineName;
-
-      const key = `${String(dt.en).trim()}_${String(dt.rn).trim()}`;
-      const candidate = candidateMap.get(key);
-
-      if (!candidate) {
-        report.Reason = "Candidate not found";
-        reportRows.push(report);
-        continue;
-      }
-
-      const paCode = Number(dt.pa);
-
-      const isMajorTheory = paCode >= 1 && paCode <= 3;
-      const isMajorPractical = paCode === 6;
-      const isMajorCIA = paCode === 7;
-
-      const isMinorTheory = paCode === 0;
-      const isMinorPractical = paCode === 5;
-      const isMinorCIA = paCode === 4;
-
-      const disciplineConfig = [
-        {
-          key: "MajorDiscipline1",
-          enabled: true,
-          cia: { obt: "MajorDiscipline1CiaObtained", max: "MajorDiscipline1CiaMax" },
-          papers: [
-            { obt: "MajorDiscipline1Paper1Obtained", max: "MajorDiscipline1Paper1Max" },
-            { obt: "MajorDiscipline1Paper2Obtained", max: "MajorDiscipline1Paper2Max" },
-            { obt: "MajorDiscipline1Paper3Obtained", max: "MajorDiscipline1Paper3Max" },
-          ],
-          practical: { obt: "MajorDiscipline1PracticalObtained", max: "MajorDiscipline1PracticalMax" },
-        },
-        {
-          key: "MajorDiscipline2",
-          enabled: true,
-          cia: { obt: "MajorDiscipline2CiaObtained", max: "MajorDiscipline2CiaMax" },
-          papers: [
-            { obt: "MajorDiscipline2Paper1Obtained", max: "MajorDiscipline2Paper1Max" },
-            { obt: "MajorDiscipline2Paper2Obtained", max: "MajorDiscipline2Paper2Max" },
-            { obt: "MajorDiscipline2Paper3Obtained", max: "MajorDiscipline2Paper3Max" },
-          ],
-          practical: { obt: "MajorDiscipline2PracticalObtained", max: "MajorDiscipline2PracticalMax" },
-        },
-        {
-          key: "MajorDiscipline3",
-          enabled: myobj.PRG_Code === "PRE008",
-          cia: { obt: "MajorDiscipline3CiaObtained", max: "MajorDiscipline3CiaMax" },
-          papers: [
-            { obt: "MajorDiscipline3Paper1Obtained", max: "MajorDiscipline3Paper1Max" },
-            { obt: "MajorDiscipline3Paper2Obtained", max: "MajorDiscipline3Paper2Max" },
-            { obt: "MajorDiscipline3Paper3Obtained", max: "MajorDiscipline3Paper3Max" },
-          ],
-        },
-        {
-          key: "MinorDiscipline",
-          enabled: true,
-          cia: { obt: "MinorDisciplineCiaObtained", max: "MinorDisciplineCiaMax" },
-          papers: [
-            { obt: "MinorDisciplinePaperObtained", max: "MinorDisciplinePaperMax" },
-          ],
-          practical: { obt: "MinorDisciplinePracticalObtained", max: "MinorDisciplinePracticalMax" },
-        },
-      ];
-
-      const updateFields = {};
-      let updated = false;
-
-      for (const d of disciplineConfig) {
-        if (!d.enabled) continue;
-        if (candidate[d.key] !== disciplineName) continue;
-
-        let marks = dt.mrk11;
-        if (marks === "" || marks === null || marks === undefined) {
-          marks = "AA";
-        }
-
-        if (isMajorCIA && d.key.startsWith("Major")) {
-          updated ||= updateIfValid(candidate, updateFields, report, d.cia.obt, d.cia.max, marks);
-        } else if (isMinorCIA && d.key === "MinorDiscipline") {
-          updated ||= updateIfValid(candidate, updateFields, report, d.cia.obt, d.cia.max, marks);
-        } else if (isMajorPractical && d.key.startsWith("Major") && d.practical) {
-          updated ||= updateIfValid(candidate, updateFields, report, d.practical.obt, d.practical.max, marks);
-        } else if (isMinorPractical && d.key === "MinorDiscipline" && d.practical) {
-          updated ||= updateIfValid(candidate, updateFields, report, d.practical.obt, d.practical.max, marks);
-        } else if (isMajorTheory && d.key.startsWith("Major")) {
-          const paperIndex = Number(paCode) - 1;
-          if (paperIndex >= 0 && paperIndex < d.papers.length) {
-            const paper = d.papers[paperIndex];
-            updated ||= updateIfValid(candidate, updateFields, report, paper.obt, paper.max, marks);
-          }
-        } else if (isMinorTheory && d.key === "MinorDiscipline") {
-          const paper = d.papers[0];
-          updated ||= updateIfValid(candidate, updateFields, report, paper.obt, paper.max, marks);
-        }
-      }
-
-      if (!updated) {
-        report.Reason ||= "Paper not linked or marks already uploaded";
-        reportRows.push(report);
-        continue;
-      }
-
-      bulkOps.push({
-        updateOne: {
-          filter: { _id: candidate._id },
-          update: { $set: updateFields },
-        },
+    } catch (error) {
+      console.error(error);
+      return res.status(500).send({
+        status: "Fail",
+        message: "Internal server error",
       });
-
-      report.Status = "UPDATED";
-      report.Reason = "Marks uploaded successfully";
-      reportRows.push(report);
+    } finally {
+      await client.close();
     }
-
-    if (bulkOps.length) {
-      await resultCol.bulkWrite(bulkOps);
-    }
-
-    const reportSheet = XLSX.utils.json_to_sheet(reportRows);
-    const reportBook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(reportBook, reportSheet, "Upload Report");
-
-    const buffer = XLSX.write(reportBook, {
-      bookType: "xlsx",
-      type: "buffer",
-    });
-
-    res.setHeader(
-      "Content-Disposition",
-      "attachment; filename=MarksUploadReport.xlsx"
-    );
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
-
-    return res.send(buffer);
-
-  } catch (error) {
-    console.error(error);
-    return res.status(500).send({
-      status: "Fail",
-      message: "Internal server error",
-    });
-  } finally {
-    await client.close();
-  }
-};
-
-
+  };
 
   //========================================================================================
   //RESULT CALCULATION
@@ -2109,14 +2205,14 @@ static UploadMarks = async (req, res) => {
 
         // const invalidNumber = (obt, max) => (obt>=max?"AA":obt)
 
-        const aaj = ()=>{
+        const aaj = () => {
           const date = new Date();
           const day = String(date.getDate()).padStart(2, "0");
           const month = String(date.getMonth() + 1).padStart(2, "0");
           const year = date.getFullYear();
           const formattedDate = `${day}/${month}/${year}`;
-          return (formattedDate)
-        }
+          return formattedDate;
+        };
 
         const percent = (obt, max) =>
           safeInt(max) === 0
@@ -2125,7 +2221,7 @@ static UploadMarks = async (req, res) => {
 
         const isAbsent = (arr) =>
           arr.every(
-            (v) => v === "AA"
+            (v) => v === "AA",
             // || safeInt(v) === 0
           );
 
@@ -2136,7 +2232,7 @@ static UploadMarks = async (req, res) => {
             return (
               gradingSystem.find(
                 (g) =>
-                  g.percentageMarksMin === "A" && g.percentageMarksMax === "A"
+                  g.percentageMarksMin === "A" && g.percentageMarksMax === "A",
               ) || null
             );
           } else {
@@ -2144,7 +2240,7 @@ static UploadMarks = async (req, res) => {
               gradingSystem.find(
                 (g) =>
                   p >= Number(g.percentageMarksMin) &&
-                  p < Number(g.percentageMarksMax)
+                  p < Number(g.percentageMarksMax),
               ) || null
             );
           }
@@ -2154,8 +2250,8 @@ static UploadMarks = async (req, res) => {
           theoryAbsent || practicalAbsent
             ? "Ab"
             : overallPass
-            ? "PASS"
-            : "FAIL";
+              ? "PASS"
+              : "FAIL";
 
         // ======================
         // BULK + REPORT
@@ -2233,7 +2329,7 @@ static UploadMarks = async (req, res) => {
             m1hasPractical &&
             !isPass(
               s.MajorDiscipline1PracticalObtained,
-              s.MajorDiscipline1PracticalMax
+              s.MajorDiscipline1PracticalMax,
             )
           ) {
             m1OverallPass = false;
@@ -2327,7 +2423,7 @@ static UploadMarks = async (req, res) => {
             m2hasPractical &&
             !isPass(
               s.MajorDiscipline2PracticalObtained,
-              s.MajorDiscipline2PracticalMax
+              s.MajorDiscipline2PracticalMax,
             )
           ) {
             m2OverallPass = false;
@@ -2472,17 +2568,17 @@ static UploadMarks = async (req, res) => {
           const m1Status = getStatus(
             m1TheoryAbsent,
             m1PracticalAbsent,
-            m1OverallPass
+            m1OverallPass,
           );
           const m2Status = getStatus(
             m2TheoryAbsent,
             m2PracticalAbsent,
-            m2OverallPass
+            m2OverallPass,
           );
           const minorStatus = getStatus(
             minorTheoryAbsent,
             minorPracticalAbsent,
-            minorPass
+            minorPass,
           );
 
           // -------------------------
@@ -2494,7 +2590,7 @@ static UploadMarks = async (req, res) => {
           // COUNTS
           // -------------------------
           const failOnlyCount = statuses.filter((s) =>
-            ["FAIL", "Ab"].includes(s)
+            ["FAIL", "Ab"].includes(s),
           ).length;
 
           const hasAbsent = statuses.includes("Ab");
@@ -2552,7 +2648,7 @@ static UploadMarks = async (req, res) => {
           }
 
           const Sgpa = Number(
-            total([Cps1, Cps2, CpsMi]) / total([Ci1, Ci2, CiMi])
+            total([Cps1, Cps2, CpsMi]) / total([Ci1, Ci2, CiMi]),
           ).toFixed(2);
 
           // ======================
@@ -2570,7 +2666,6 @@ static UploadMarks = async (req, res) => {
             MajorDiscipline1Classisfication: m1Grade?.classisfication,
             Major1Status: m1Status,
             Major1Cps: Cps1,
-           
 
             // ======================
             // MAJOR 2
@@ -2607,7 +2702,7 @@ static UploadMarks = async (req, res) => {
             Remarks: "GRADING SYSTEM @40%",
             PDF: "PDF",
             RD: "MF001",
-            DOR: aaj()
+            DOR: aaj(),
           };
 
           bulkOps.push({
@@ -2641,11 +2736,11 @@ static UploadMarks = async (req, res) => {
 
         res.setHeader(
           "Content-Disposition",
-          "attachment; filename=ResultReport.xlsx"
+          "attachment; filename=ResultReport.xlsx",
         );
         res.setHeader(
           "Content-Type",
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         );
 
         return res.send(buffer);
@@ -2666,14 +2761,14 @@ static UploadMarks = async (req, res) => {
 
         const isPass = (obt, max) => safeInt(obt) >= calc40(max);
 
-        const aaj = ()=>{
+        const aaj = () => {
           const date = new Date();
           const day = String(date.getDate()).padStart(2, "0");
           const month = String(date.getMonth() + 1).padStart(2, "0");
           const year = date.getFullYear();
           const formattedDate = `${day}/${month}/${year}`;
-          return (formattedDate)
-        }
+          return formattedDate;
+        };
 
         const percent = (obt, max) =>
           safeInt(max) === 0
@@ -2690,7 +2785,7 @@ static UploadMarks = async (req, res) => {
             return (
               gradingSystem.find(
                 (g) =>
-                  g.percentageMarksMin === "A" && g.percentageMarksMax === "A"
+                  g.percentageMarksMin === "A" && g.percentageMarksMax === "A",
               ) || null
             );
           } else {
@@ -2698,7 +2793,7 @@ static UploadMarks = async (req, res) => {
               gradingSystem.find(
                 (g) =>
                   p >= Number(g.percentageMarksMin) &&
-                  p < Number(g.percentageMarksMax)
+                  p < Number(g.percentageMarksMax),
               ) || null
             );
           }
@@ -2883,37 +2978,37 @@ static UploadMarks = async (req, res) => {
           const m1Status = isAbsent([s.MajorDiscipline1Paper1Obtained])
             ? "Ab"
             : m1OverallPass && m1Grade?.classisfication !== "Failed"
-            ? "PASS"
-            : "FAIL";
+              ? "PASS"
+              : "FAIL";
 
           const m2Status = isAbsent([s.MajorDiscipline2Paper1Obtained])
             ? "Ab"
             : m2OverallPass && m2Grade?.classisfication !== "Failed"
-            ? "PASS"
-            : "FAIL";
+              ? "PASS"
+              : "FAIL";
           const m3Status = isAbsent([s.MajorDiscipline3Paper1Obtained])
             ? "Ab"
             : m3OverallPass && m3Grade?.classisfication !== "Failed"
-            ? "PASS"
-            : "FAIL";
+              ? "PASS"
+              : "FAIL";
           const minorStatus = isAbsent([s.MinorDisciplinePaperObtained])
             ? "Ab"
             : minorPass && minorGrade?.classisfication !== "Failed"
-            ? "PASS"
-            : "FAIL";
+              ? "PASS"
+              : "FAIL";
 
           // -------------------------
           // NORMALIZE STATUSES
           // -------------------------
           const statuses = [m1Status, m2Status, m3Status, minorStatus].filter(
-            Boolean
+            Boolean,
           ); // handles missing Major3 safely
 
           // -------------------------
           // COUNTS
           // -------------------------
           const failOnlyCount = statuses.filter((s) =>
-            ["FAIL", "Ab"].includes(s)
+            ["FAIL", "Ab"].includes(s),
           ).length;
 
           const hasAbsent = statuses.includes("Ab");
@@ -2948,7 +3043,7 @@ static UploadMarks = async (req, res) => {
           }
 
           const Sgpa = Number(
-            total([Cps1, Cps2, Cps3, CpsMi]) / total([Ci1, Ci2, Ci3, CiMi])
+            total([Cps1, Cps2, Cps3, CpsMi]) / total([Ci1, Ci2, Ci3, CiMi]),
           ).toFixed(2);
 
           // ======================
@@ -3006,7 +3101,7 @@ static UploadMarks = async (req, res) => {
             TotalSgpa: Sgpa,
             PDF: "PDF",
             RD: "MF001",
-            DOR: aaj()
+            DOR: aaj(),
           };
 
           bulkOps.push({
@@ -3040,11 +3135,11 @@ static UploadMarks = async (req, res) => {
 
         res.setHeader(
           "Content-Disposition",
-          "attachment; filename=ResultReport.xlsx"
+          "attachment; filename=ResultReport.xlsx",
         );
         res.setHeader(
           "Content-Type",
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         );
 
         return res.send(buffer);
@@ -3059,6 +3154,10 @@ static UploadMarks = async (req, res) => {
       await client.close();
     }
   };
+
+  //====================================================================================
+  //============= DETAILS FOR MARKS MODIFICATION AND DISCEPLINE (MAJOR/MINOR)===========
+  //====================================================================================
 
   static getdetailsNep = async (req, res) => {
     const myobj = req.body;
@@ -3075,31 +3174,27 @@ static UploadMarks = async (req, res) => {
       PDF: "PDF",
     };
 
-   
     const data = await database
       .collection(myobj?.SEM?.DB_CL + "_RESULT")
       .findOne(query);
 
-      if (!data) {
-        return res.status(401).json({
-          status: "Fail",
-          message: "Record Not Found! Report to System Manager please....",
-        });
-      }
+    if (!data) {
+      return res.status(401).json({
+        status: "Fail",
+        message: "Record Not Found! Report to System Manager please....",
+      });
+    }
 
-    const forProf = (myobj?.SEM?.DB_CL).slice(0,3)
+    const forProf = (myobj?.SEM?.DB_CL).slice(0, 3);
 
     const ProfileData = await database
       .collection(forProf + "_PROFILE")
-      .findOne(
-        {EnrolmentNumber: data.EnrolmentNumber}
-        );
+      .findOne({ EnrolmentNumber: data.EnrolmentNumber });
 
-        const newData = {
-          ...data, 
-          ...ProfileData
-        }
-        
+    const newData = {
+      ...data,
+      ...ProfileData,
+    };
 
     if (data) {
       res.status(200).send({
@@ -3114,8 +3209,11 @@ static UploadMarks = async (req, res) => {
     }
   };
 
-  static ModifyNepMarks = async (req, res) => {
+  //============================================================
+  //============MARKS MODIFICATION==============================
+  //============================================================
 
+  static ModifyNepMarks = async (req, res) => {
     const myobj = req.body;
 
     const { SEM, ...rest } = myobj;
@@ -3142,14 +3240,12 @@ static UploadMarks = async (req, res) => {
       PDF: "PDF",
     };
 
-      const collection = database.collection(myobj?.SEM?.DB_CL + "_RESULT");
+    const collection = database.collection(myobj?.SEM?.DB_CL + "_RESULT");
 
-      const student = await collection.findOne(query);
-
+    const student = await collection.findOne(query);
 
     if (student) {
       if (!(myobj?.PRG_CODE === "PRE008")) {
-
         // ======================
         // HELPER FUNCTIONS
         // ======================
@@ -3161,20 +3257,19 @@ static UploadMarks = async (req, res) => {
 
         const isPass = (obt, max) => safeInt(obt) >= calc40(max);
 
-        const aaj = ()=>{
+        const aaj = () => {
           const date = new Date();
           const day = String(date.getDate()).padStart(2, "0");
           const month = String(date.getMonth() + 1).padStart(2, "0");
           const year = date.getFullYear();
           const formattedDate = `${day}/${month}/${year}`;
-          return (formattedDate)
-        }
+          return formattedDate;
+        };
 
-        const roundData = (rdc)=>{
-          const v = Number(rdc.slice(-1))
-          return ("MM00" + (v+1))
-          
-        }
+        const roundData = (rdc) => {
+          const v = Number(rdc.slice(-1));
+          return "MM00" + (v + 1);
+        };
 
         // const invalidNumber = (obt, max) => (obt>=max?"AA":obt)
 
@@ -3185,7 +3280,7 @@ static UploadMarks = async (req, res) => {
 
         const isAbsent = (arr) =>
           arr.every(
-            (v) => v === "AA"
+            (v) => v === "AA",
             // || safeInt(v) === 0
           );
 
@@ -3196,7 +3291,7 @@ static UploadMarks = async (req, res) => {
             return (
               gradingSystem.find(
                 (g) =>
-                  g.percentageMarksMin === "A" && g.percentageMarksMax === "A"
+                  g.percentageMarksMin === "A" && g.percentageMarksMax === "A",
               ) || null
             );
           } else {
@@ -3204,7 +3299,7 @@ static UploadMarks = async (req, res) => {
               gradingSystem.find(
                 (g) =>
                   p >= Number(g.percentageMarksMin) &&
-                  p < Number(g.percentageMarksMax)
+                  p < Number(g.percentageMarksMax),
               ) || null
             );
           }
@@ -3214,8 +3309,8 @@ static UploadMarks = async (req, res) => {
           theoryAbsent || practicalAbsent
             ? "Ab"
             : overallPass
-            ? "PASS"
-            : "FAIL";
+              ? "PASS"
+              : "FAIL";
 
         // ======================
         // BULK + REPORT
@@ -3293,7 +3388,7 @@ static UploadMarks = async (req, res) => {
             m1hasPractical &&
             !isPass(
               s.MajorDiscipline1PracticalObtained,
-              s.MajorDiscipline1PracticalMax
+              s.MajorDiscipline1PracticalMax,
             )
           ) {
             m1OverallPass = false;
@@ -3387,7 +3482,7 @@ static UploadMarks = async (req, res) => {
             m2hasPractical &&
             !isPass(
               s.MajorDiscipline2PracticalObtained,
-              s.MajorDiscipline2PracticalMax
+              s.MajorDiscipline2PracticalMax,
             )
           ) {
             m2OverallPass = false;
@@ -3532,17 +3627,17 @@ static UploadMarks = async (req, res) => {
           const m1Status = getStatus(
             m1TheoryAbsent,
             m1PracticalAbsent,
-            m1OverallPass
+            m1OverallPass,
           );
           const m2Status = getStatus(
             m2TheoryAbsent,
             m2PracticalAbsent,
-            m2OverallPass
+            m2OverallPass,
           );
           const minorStatus = getStatus(
             minorTheoryAbsent,
             minorPracticalAbsent,
-            minorPass
+            minorPass,
           );
 
           // -------------------------
@@ -3554,7 +3649,7 @@ static UploadMarks = async (req, res) => {
           // COUNTS
           // -------------------------
           const failOnlyCount = statuses.filter((s) =>
-            ["FAIL", "Ab"].includes(s)
+            ["FAIL", "Ab"].includes(s),
           ).length;
 
           const hasAbsent = statuses.includes("Ab");
@@ -3612,7 +3707,7 @@ static UploadMarks = async (req, res) => {
           }
 
           const Sgpa = Number(
-            total([Cps1, Cps2, CpsMi]) / total([Ci1, Ci2, CiMi])
+            total([Cps1, Cps2, CpsMi]) / total([Ci1, Ci2, CiMi]),
           ).toFixed(2);
 
           // ======================
@@ -3688,7 +3783,7 @@ static UploadMarks = async (req, res) => {
           });
 
           const { _id, ...oldStudentData } = student;
-          
+
           //Remove unwanted fields before insert
 
           const fieldsToRemove = [
@@ -3722,7 +3817,6 @@ static UploadMarks = async (req, res) => {
           delete s._id;
           delete finalResult._id;
 
-
           // INSERT NEW REVISED RESULT
           bulkOps.push({
             insertOne: {
@@ -3736,55 +3830,48 @@ static UploadMarks = async (req, res) => {
             },
           });
 
-          
-
           reportRows.push({
             EnrolmentNumber: s.EnrolmentNumber,
             RollNumber: s.RollNumber,
             ...finalResult,
           });
         }
-        
 
         try {
-
           if (bulkOps.length) {
             const result = await collection.bulkWrite(bulkOps, {
               ordered: true, // 🔥 better
             });
 
-          
-        
             // 🔥 YAHI PAR ADD KARNA HAI
             if (req.query.export === "excel") {
-        
               if (!reportRows.length) {
                 return res.status(400).json({
                   message: "No data to export",
                 });
               }
-        
+
               const workbook = XLSX.utils.book_new();
               const worksheet = XLSX.utils.json_to_sheet(reportRows);
               XLSX.utils.book_append_sheet(workbook, worksheet, "ResultReport");
-        
+
               const buffer = XLSX.write(workbook, {
                 bookType: "xlsx",
                 type: "buffer",
               });
-        
+
               res.setHeader(
                 "Content-Disposition",
-                "attachment; filename=ResultReport.xlsx"
+                "attachment; filename=ResultReport.xlsx",
               );
               res.setHeader(
                 "Content-Type",
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
               );
-        
+
               return res.send(buffer);
             }
-        
+
             // 🔥 NORMAL JSON RESPONSE
             return res.status(200).json({
               status: "success",
@@ -3793,13 +3880,11 @@ static UploadMarks = async (req, res) => {
               modified: result.modifiedCount,
             });
           }
-        
+
           return res.status(200).send("No operations");
-        
         } catch (error) {
-          console.log(error)
+          console.log(error);
         }
-      
       }
 
       // ======================================================================================================
@@ -3824,22 +3909,19 @@ static UploadMarks = async (req, res) => {
 
         // const isAbsent = (arr) => arr.map(safeInt).every((v) => v === 0);
 
-
-        const aaj = ()=>{
+        const aaj = () => {
           const date = new Date();
           const day = String(date.getDate()).padStart(2, "0");
           const month = String(date.getMonth() + 1).padStart(2, "0");
           const year = date.getFullYear();
           const formattedDate = `${day}/${month}/${year}`;
-          return (formattedDate)
-        }
+          return formattedDate;
+        };
 
-        const roundData = (rdc)=>{
-          const v = Number(rdc.slice(-1))
-          return ("MM00" + (v+1))
-          
-        }
-
+        const roundData = (rdc) => {
+          const v = Number(rdc.slice(-1));
+          return "MM00" + (v + 1);
+        };
 
         const isAbsent = (arr) =>
           arr.every((v) => v === "AA" || safeInt(v) === 0);
@@ -3849,7 +3931,7 @@ static UploadMarks = async (req, res) => {
             return (
               gradingSystem.find(
                 (g) =>
-                  g.percentageMarksMin === "A" && g.percentageMarksMax === "A"
+                  g.percentageMarksMin === "A" && g.percentageMarksMax === "A",
               ) || null
             );
           } else {
@@ -3857,7 +3939,7 @@ static UploadMarks = async (req, res) => {
               gradingSystem.find(
                 (g) =>
                   p >= Number(g.percentageMarksMin) &&
-                  p < Number(g.percentageMarksMax)
+                  p < Number(g.percentageMarksMax),
               ) || null
             );
           }
@@ -4042,37 +4124,37 @@ static UploadMarks = async (req, res) => {
           const m1Status = isAbsent([s.MajorDiscipline1Paper1Obtained])
             ? "Ab"
             : m1OverallPass && m1Grade?.classisfication !== "Failed"
-            ? "PASS"
-            : "FAIL";
+              ? "PASS"
+              : "FAIL";
 
           const m2Status = isAbsent([s.MajorDiscipline2Paper1Obtained])
             ? "Ab"
             : m2OverallPass && m2Grade?.classisfication !== "Failed"
-            ? "PASS"
-            : "FAIL";
+              ? "PASS"
+              : "FAIL";
           const m3Status = isAbsent([s.MajorDiscipline3Paper1Obtained])
             ? "Ab"
             : m3OverallPass && m3Grade?.classisfication !== "Failed"
-            ? "PASS"
-            : "FAIL";
+              ? "PASS"
+              : "FAIL";
           const minorStatus = isAbsent([s.MinorDisciplinePaperObtained])
             ? "Ab"
             : minorPass && minorGrade?.classisfication !== "Failed"
-            ? "PASS"
-            : "FAIL";
+              ? "PASS"
+              : "FAIL";
 
           // -------------------------
           // NORMALIZE STATUSES
           // -------------------------
           const statuses = [m1Status, m2Status, m3Status, minorStatus].filter(
-            Boolean
+            Boolean,
           ); // handles missing Major3 safely
 
           // -------------------------
           // COUNTS
           // -------------------------
           const failOnlyCount = statuses.filter((s) =>
-            ["FAIL", "Ab"].includes(s)
+            ["FAIL", "Ab"].includes(s),
           ).length;
 
           const hasAbsent = statuses.includes("Ab");
@@ -4107,7 +4189,7 @@ static UploadMarks = async (req, res) => {
           }
 
           const Sgpa = Number(
-            total([Cps1, Cps2, Cps3, CpsMi]) / total([Ci1, Ci2, Ci3, CiMi])
+            total([Cps1, Cps2, Cps3, CpsMi]) / total([Ci1, Ci2, Ci3, CiMi]),
           ).toFixed(2);
 
           // ======================
@@ -4191,33 +4273,32 @@ static UploadMarks = async (req, res) => {
           delete s._id;
           delete finalResult._id;
 
-            //Remove unwanted fields before insert
+          //Remove unwanted fields before insert
 
-            const fieldsToRemove = [
-              "Program",
-              "FormNumber",
-              "CuetRollNumber",
-              "ProgrameName",
-              "Unit",
-              "Name",
-              "FatherName",
-              "MotherName",
-              "ABCIdNumber",
-              "Gender",
-              "SocialCategory",
-              "AdharNumber",
-              "DateofBirth",
-              "YearOfAdmission",
-            ];
-  
-            const removeFields = (obj, fields) => {
-              fields.forEach((field) => delete obj[field]);
-              return obj;
-            };
-  
-            removeFields(oldStudentData, fieldsToRemove);
-            removeFields(s, fieldsToRemove);
-  
+          const fieldsToRemove = [
+            "Program",
+            "FormNumber",
+            "CuetRollNumber",
+            "ProgrameName",
+            "Unit",
+            "Name",
+            "FatherName",
+            "MotherName",
+            "ABCIdNumber",
+            "Gender",
+            "SocialCategory",
+            "AdharNumber",
+            "DateofBirth",
+            "YearOfAdmission",
+          ];
+
+          const removeFields = (obj, fields) => {
+            fields.forEach((field) => delete obj[field]);
+            return obj;
+          };
+
+          removeFields(oldStudentData, fieldsToRemove);
+          removeFields(s, fieldsToRemove);
 
           bulkOps.push({
             insertOne: {
@@ -4243,37 +4324,36 @@ static UploadMarks = async (req, res) => {
             const result = await collection.bulkWrite(bulkOps, {
               ordered: true, // 🔥 better
             });
-        
+
             // 🔥 YAHI PAR ADD KARNA HAI
             if (req.query.export === "excel") {
-        
               if (!reportRows.length) {
                 return res.status(400).json({
                   message: "No data to export",
                 });
               }
-        
+
               const workbook = XLSX.utils.book_new();
               const worksheet = XLSX.utils.json_to_sheet(reportRows);
               XLSX.utils.book_append_sheet(workbook, worksheet, "ResultReport");
-        
+
               const buffer = XLSX.write(workbook, {
                 bookType: "xlsx",
                 type: "buffer",
               });
-        
+
               res.setHeader(
                 "Content-Disposition",
-                "attachment; filename=ResultReport.xlsx"
+                "attachment; filename=ResultReport.xlsx",
               );
               res.setHeader(
                 "Content-Type",
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
               );
-        
+
               return res.send(buffer);
             }
-        
+
             // 🔥 NORMAL JSON RESPONSE
             return res.status(200).json({
               status: "success",
@@ -4282,21 +4362,236 @@ static UploadMarks = async (req, res) => {
               modified: result.modifiedCount,
             });
           }
-        
+
           return res.status(200).send("No operations");
-        
         } catch (error) {
-          console.log(error)
+          console.log(error);
         }
       }
     } else {
-
       return res.status(400).json({
         status: "Fail",
-        message: "Student Not Found..."
-      })
+        message: "Student Not Found...",
+      });
     }
   };
+
+  static getAllDescipline = async (req, res) => {
+    const myobj = req.body;
+    const client = new MongoClient(URL);
+    await client.connect();
+    const database = client.db("NEP");
+    const data = await database
+      .collection("Discipline")
+      .find({
+        PRG_CODE: myobj.PRG,
+        DB_CL: myobj.semester.DB_CL,
+        session: myobj.session,
+      })
+      .toArray();
+    res.status(200).send({
+      data,
+    });
+  };
+
+
+
+  static SubjectModify = async (req, res) => {
+  try {
+    const myobj = req.body;
+
+    const client = new MongoClient(URL);
+    await client.connect();
+
+    const database = client.db("NepUG");
+    const collection = database.collection(myobj.SEM.DB_CL + "_RESULT");
+
+    const database1 = client.db("NEP");
+    const papers = await database1.collection("PaperDetails").find({}).toArray()
+
+    // 🔥 ONLY DISCIPLINE DETAILS
+    const disciplineDetails = await database1
+      .collection("DiciplineDetails")
+      .find({})
+      .toArray();
+
+    // 🔍 Candidate
+    const candidate = await collection.findOne({
+      RollNumber: myobj.RollNumber,
+      PDF: "PDF",
+    });
+
+    if (!candidate) {
+      return res.status(404).send("Candidate not found");
+    }
+
+    // -----------------------------
+    // 🔥 SUBJECT KEYS
+    // -----------------------------
+    const subjectKeys = Object.keys(myobj).filter(
+      (k) => !["SEM", "RollNumber"].includes(k)
+    );
+
+    // -----------------------------
+    // 🧹 CLONE + REMOVE OLD FIELDS
+    // -----------------------------
+    const updatedCandidate = { ...candidate };
+
+    subjectKeys.forEach((key) => {
+      Object.keys(updatedCandidate).forEach((field) => {
+        if (field.startsWith(key)) {
+          delete updatedCandidate[field];
+        }
+      });
+    });
+
+    // -----------------------------
+    // 🔥 HELPERS
+    // -----------------------------
+    const getType = (key) => {
+      if (key.startsWith("Major")) return "Major";
+      if (key.startsWith("Minor")) return "Minor";
+      return null;
+    };
+
+    const normalize = (v) => v?.trim().toUpperCase();
+
+    // -----------------------------
+    // 🔥 MAPPING (CORE ENGINE)
+    // -----------------------------
+    const mapping = {
+      Major: {
+        papers: ["Major1Max", "Major2Max", "Major3Max"],
+        cia: "MajorCiaMax",
+        practical: "MajorPracticleMax",
+        total: "MajorTotalMax",
+        credit: "MajorTotalCreditMax",
+      },
+      Minor: {
+        papers: ["Minor1Max"],
+        cia: "Minor1CiaMax",
+        practical: "Minor1PracticleMax",
+        total: "MinorTotalMax",
+        credit: "MinorCreditMax",
+      },
+    };
+
+    // -----------------------------
+    // 🚀 MAIN LOOP
+    // -----------------------------
+    for (const key of subjectKeys) {
+      const dsp = myobj[key];
+      const type = getType(key);
+
+      if (!dsp || !type) continue;
+
+      console.log("👉 Processing:", key, dsp, type);
+
+      // 🔍 FIND DISCIPLINE DETAILS
+      const details = disciplineDetails.find(
+        (d) => normalize(d.DISCIPLINE) === normalize(dsp)
+      );
+
+      if (!details) {
+        console.log("❌ No details found for:", dsp);
+        continue;
+      }
+
+      // 🎯 SET SUBJECT NAME
+      updatedCandidate[key] = dsp;
+
+      const map = mapping[type];
+
+      // -----------------------------
+// 📘 PAPERS (NEW ✅)
+// -----------------------------
+const matchedPapers = papers.filter(
+  (p) =>
+    normalize(p.DISCIPLINE) === normalize(dsp) &&
+    normalize(p.CBCS_CATEGORY) === normalize(type)
+);
+
+if (!matchedPapers.length) {
+  console.log("❌ No papers found for:", dsp, type);
+}
+
+matchedPapers
+  .sort((a, b) => (a.PAPER || "").localeCompare(b.PAPER || ""))
+  .forEach((paperObj, index) => {
+    const i = index + 1;
+
+    // 👉 Max from DiciplineDetails
+    const maxField = map.papers[index];
+    const maxValue = details[maxField];
+
+    if (maxValue != null) {
+      updatedCandidate[`${key}Paper${i}Max`] = maxValue;
+      updatedCandidate[`${key}Paper${i}Obtained`] = 0;
+    }
+
+    // 👉 OPTIONAL: Paper Name
+    if (paperObj.PAPER) {
+      updatedCandidate[`${key}Paper${i}`] = paperObj.PAPER;
+    }
+  });
+
+      // -----------------------------
+      // 📗 CIA
+      // -----------------------------
+      if (map.cia && details[map.cia] != null) {
+        updatedCandidate[`${key}CiaMax`] = details[map.cia];
+        updatedCandidate[`${key}CiaObtained`] = 0;
+      }
+
+      // -----------------------------
+      // 📙 PRACTICAL
+      // -----------------------------
+      if (map.practical && details[map.practical] != null) {
+        updatedCandidate[`${key}PracticalMax`] =
+          details[map.practical];
+        updatedCandidate[`${key}PracticalObtained`] = 0;
+      }
+
+      // -----------------------------
+      // 🧮 TOTAL
+      // -----------------------------
+      if (map.total && details[map.total] != null) {
+        updatedCandidate[`${key}TotalMax`] = details[map.total];
+      }
+
+      // -----------------------------
+      // 🎓 CREDIT
+      // -----------------------------
+      if (map.credit && details[map.credit] != null) {
+        updatedCandidate[`${key}CreditMax`] = details[map.credit];
+      }
+    }
+
+    // console.log("✅ Updated Candidate:", updatedCandidate);
+
+    // -----------------------------
+    // 📝 UPDATE DATABASE
+    // -----------------------------
+    await collection.updateOne(
+      { RollNumber: myobj.RollNumber, PDF: "PDF" },
+      { $set: updatedCandidate }
+    );
+
+    // -----------------------------
+    // 📤 RESPONSE
+    // -----------------------------
+    res.send({
+      status: "OK",
+      message: "Subjects updated successfully (Mapping आधारित)",
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server Error");
+  }
+};
+
+  
 }
 
 export default userController;
