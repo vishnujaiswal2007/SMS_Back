@@ -4398,6 +4398,19 @@ class userController {
 
   static SubjectModify = async (req, res) => {
   try {
+    // -----------------------------
+    // BASIC DATE INFO
+    // -----------------------------
+    const date = new Date();
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    const formattedDate = `${day}/${month}/${year}`;
+
+    // -----------------------------
+    // REAL Programe
+    // -----------------------------
+
     const myobj = req.body;
 
     const client = new MongoClient(URL);
@@ -4407,7 +4420,6 @@ class userController {
     const collection = database.collection(myobj.SEM.DB_CL + "_RESULT");
 
     const database1 = client.db("NEP");
-    const papers = await database1.collection("PaperDetails").find({}).toArray()
 
     // 🔥 ONLY DISCIPLINE DETAILS
     const disciplineDetails = await database1
@@ -4429,13 +4441,16 @@ class userController {
     // 🔥 SUBJECT KEYS
     // -----------------------------
     const subjectKeys = Object.keys(myobj).filter(
-      (k) => !["SEM", "RollNumber"].includes(k)
+      (k) => !["SEM", "RollNumber"].includes(k),
     );
 
     // -----------------------------
     // 🧹 CLONE + REMOVE OLD FIELDS
     // -----------------------------
     const updatedCandidate = { ...candidate };
+
+    delete updatedCandidate._id;
+    
 
     subjectKeys.forEach((key) => {
       Object.keys(updatedCandidate).forEach((field) => {
@@ -4444,6 +4459,13 @@ class userController {
         }
       });
     });
+
+    updatedCandidate.OverAllResult = "Nil";
+    updatedCandidate.OverAllSemMarks = 0;
+
+    //=========================================
+    //Adding of Max and Obtained Fields
+    //==========================================
 
     // -----------------------------
     // 🔥 HELPERS
@@ -4485,97 +4507,189 @@ class userController {
 
       if (!dsp || !type) continue;
 
-      console.log("👉 Processing:", key, dsp, type);
+      // console.log("👉 Processing:", key, dsp, type);
 
       // 🔍 FIND DISCIPLINE DETAILS
       const details = disciplineDetails.find(
-        (d) => normalize(d.DISCIPLINE) === normalize(dsp)
+        (d) => normalize(d.DISCIPLINE) === normalize(dsp),
       );
 
       if (!details) {
         console.log("❌ No details found for:", dsp);
         continue;
       }
+    }
 
-      // 🎯 SET SUBJECT NAME
-      updatedCandidate[key] = dsp;
+    const remarksArr = []; // 🔥 collect all remarks
+
+    for (const key of subjectKeys) {
+      const dsp = myobj[key];
+      const type = getType(key); // Major / Minor
+
+      if (!dsp || !type) continue;
+
+      const details = disciplineDetails.find(
+        (d) => normalize(d.DISCIPLINE) === normalize(dsp),
+      );
+
+      if (!details) continue;
+
+      // 🎯 ADD REMARK
+      remarksArr.push(
+        `Subject Changed for ${key} to ${dsp} on ${formattedDate}`,
+      );
 
       const map = mapping[type];
 
       // -----------------------------
-// 📘 PAPERS (NEW ✅)
-// -----------------------------
-const matchedPapers = papers.filter(
-  (p) =>
-    normalize(p.DISCIPLINE) === normalize(dsp) &&
-    normalize(p.CBCS_CATEGORY) === normalize(type)
-);
-
-if (!matchedPapers.length) {
-  console.log("❌ No papers found for:", dsp, type);
-}
-
-matchedPapers
-  .sort((a, b) => (a.PAPER || "").localeCompare(b.PAPER || ""))
-  .forEach((paperObj, index) => {
-    const i = index + 1;
-
-    // 👉 Max from DiciplineDetails
-    const maxField = map.papers[index];
-    const maxValue = details[maxField];
-
-    if (maxValue != null) {
-      updatedCandidate[`${key}Paper${i}Max`] = maxValue;
-      updatedCandidate[`${key}Paper${i}Obtained`] = 0;
-    }
-
-    // 👉 OPTIONAL: Paper Name
-    if (paperObj.PAPER) {
-      updatedCandidate[`${key}Paper${i}`] = paperObj.PAPER;
-    }
-  });
-
+      // 🎯 PAPERS LOOP
       // -----------------------------
-      // 📗 CIA
+     map.papers.forEach((field, index) => {
+       if (details[field] !== undefined) {
+         let base = "";
+
+         // ✅ Minor fix
+         if (type === "Minor") {
+           base = `${key}Paper`;
+         } else {
+           base = `${key}Paper${index + 1}`;
+         }
+
+         // MAX
+         updatedCandidate[`${base}Max`] = details[field];
+
+         // OBTAINED
+         updatedCandidate[`${base}Obtained`] = 0;
+       }
+     });
       // -----------------------------
-      if (map.cia && details[map.cia] != null) {
-        updatedCandidate[`${key}CiaMax`] = details[map.cia];
-        updatedCandidate[`${key}CiaObtained`] = 0;
+      // 🎯 CIA
+      // -----------------------------
+      if (map.cia && details[map.cia] !== undefined) {
+        const base = `${key}Cia`;
+
+        updatedCandidate[`${base}Max`] = details[map.cia];
+        updatedCandidate[`${base}Obtained`] = 0;
       }
 
       // -----------------------------
-      // 📙 PRACTICAL
+      // 🎯 PRACTICAL
       // -----------------------------
-      if (map.practical && details[map.practical] != null) {
-        updatedCandidate[`${key}PracticalMax`] =
-          details[map.practical];
-        updatedCandidate[`${key}PracticalObtained`] = 0;
+      if (map.practical && details[map.practical] !== undefined) {
+        const base = `${key}Practical`;
+
+        updatedCandidate[`${base}Max`] = details[map.practical];
+        updatedCandidate[`${base}Obtained`] = 0;
       }
 
       // -----------------------------
-      // 🧮 TOTAL
+      // 🎯 TOTAL
       // -----------------------------
-      if (map.total && details[map.total] != null) {
-        updatedCandidate[`${key}TotalMax`] = details[map.total];
+      if (map.total && details[map.total] !== undefined) {
+        const base = `${key}Total`;
+
+        updatedCandidate[`${base}Max`] = details[map.total];
+        updatedCandidate[`${base}Obtained`] = 0;
       }
 
       // -----------------------------
-      // 🎓 CREDIT
+      // 🎯 CREDIT (optional: usually no obtained)
       // -----------------------------
-      if (map.credit && details[map.credit] != null) {
-        updatedCandidate[`${key}CreditMax`] = details[map.credit];
+      if (map.credit && details[map.credit] !== undefined) {
+        updatedCandidate[`${key}TotalCreditMax`] = details[map.credit];
       }
     }
+    // -----------------------------
+    // 🎯 FINAL REMARKS
+    // -----------------------------
+    if (remarksArr.length) {
+      updatedCandidate.Remarks = remarksArr.join("\n");
+    }
+
+    //================================================
+    //========Updating Papers Names=========
+    //================================================
+    const papers = await database1
+      .collection("PaperDetails")
+      .find({})
+      .toArray();
+
+   for (const key of subjectKeys) {
+     const dsp = myobj[key];
+     const type = getType(key); // Major / Minor
+
+     if (!dsp || !type) continue;
+
+     // 🎯 store subject
+     updatedCandidate[key] = dsp;
+
+     // 🎯 filter + sort papers (important)
+     const relatedPapers = papers
+       .filter(
+         (p) =>
+           normalize(p.DISCIPLINE) === normalize(dsp) &&
+           normalize(p.CBCS_CATEGORY) === normalize(type),
+       )
+       .sort((a, b) => Number(a.PaperCode) - Number(b.PaperCode));
+
+     if (!relatedPapers.length) continue;
+
+     // -----------------------------
+     // 🚀 LOOP
+     // -----------------------------
+     for (const p of relatedPapers) {
+       const code = Number(p.PaperCode);
+       let base = "";
+
+       // 🎯 PAPERS
+       if (type === "Minor") {
+         if (code === 0) base = `${key}Paper`; // Minor
+       } else {
+         if (code >= 1 && code <= 3) {
+           base = `${key}Paper${code}`; // Major
+         }
+       }
+
+       // 🎯 CIA
+       if (code === 4 || code === 7) {
+         base = `${key}Cia`;
+       }
+
+       // 🎯 PRACTICAL
+       if (code === 5 || code === 6) {
+         base = `${key}Practical`;
+       }
+
+       if (!base) continue;
+
+       // -----------------------------
+       // 🎯 COURSE NAME
+       // -----------------------------
+       updatedCandidate[base] = p.COURSE_NAME;
+
+       // -----------------------------
+       // 🔥 CREDIT LOGIC (NEW ADD)
+       // -----------------------------
+       if (p.MAXIMUM_CREDIT !== undefined) {
+         updatedCandidate[`${base}CreditMax`] = Number(p.MAXIMUM_CREDIT || 0);
+       }
+     }
+   }
 
     // console.log("✅ Updated Candidate:", updatedCandidate);
 
-    // -----------------------------
-    // 📝 UPDATE DATABASE
-    // -----------------------------
+    // OLD record update
     await collection.updateOne(
       { RollNumber: myobj.RollNumber, PDF: "PDF" },
-      { $set: updatedCandidate }
+      { $set: { PDF: "---" } },
     );
+
+    // NEW record insert
+    await collection.insertOne({
+      RollNumber: myobj.RollNumber,
+      ...updatedCandidate,
+      createdAt: formattedDate,
+    });
 
     // -----------------------------
     // 📤 RESPONSE
@@ -4584,7 +4698,6 @@ matchedPapers
       status: "OK",
       message: "Subjects updated successfully (Mapping आधारित)",
     });
-
   } catch (err) {
     console.error(err);
     res.status(500).send("Server Error");

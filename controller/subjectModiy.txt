@@ -1,3 +1,4 @@
+ Remarks:`Subject Changed for ${key} to ${dsp} on ${formattedDate}`
 static SubjectModify = async (req, res) => {
   try {
 
@@ -110,3 +111,80 @@ for (const k of subjectKeys) {
     res.status(500).send("Server Error");
   }
 };
+
+
+
+
+
+
+
+
+
+      // 🎯 SET SUBJECT NAME
+      updatedCandidate[key] = dsp;
+
+      const map = mapping[type];
+
+      // -----------------------------
+// 📘 PAPERS (NEW ✅)
+// -----------------------------
+const matchedPapers = papers.filter(
+  (p) =>
+    normalize(p.DISCIPLINE) === normalize(dsp) &&
+    normalize(p.CBCS_CATEGORY) === normalize(type)
+);
+
+if (!matchedPapers.length) {
+  console.log("❌ No papers found for:", dsp, type);
+}
+
+matchedPapers
+  .sort((a, b) => (a.PAPER || "").localeCompare(b.PAPER || ""))
+  .forEach((paperObj, index) => {
+    const i = index + 1;
+
+    // 👉 Max from DiciplineDetails
+    const maxField = map.papers[index];
+    const maxValue = details[maxField];
+
+    if (maxValue != null) {
+      updatedCandidate[`${key}Paper${i}Max`] = maxValue;
+      updatedCandidate[`${key}Paper${i}Obtained`] = 0;
+    }
+
+    // 👉 OPTIONAL: Paper Name
+    if (paperObj.PAPER) {
+      updatedCandidate[`${key}Paper${i}`] = paperObj.PAPER;
+    }
+  });
+
+      // -----------------------------
+      // 📗 CIA
+      // -----------------------------
+      if (map.cia && details[map.cia] != null) {
+        updatedCandidate[`${key}CiaMax`] = details[map.cia];
+        updatedCandidate[`${key}CiaObtained`] = 0;
+      }
+
+      // -----------------------------
+      // 📙 PRACTICAL
+      // -----------------------------
+      if (map.practical && details[map.practical] != null) {
+        updatedCandidate[`${key}PracticalMax`] =
+          details[map.practical];
+        updatedCandidate[`${key}PracticalObtained`] = 0;
+      }
+
+      // -----------------------------
+      // 🧮 TOTAL
+      // -----------------------------
+      if (map.total && details[map.total] != null) {
+        updatedCandidate[`${key}TotalMax`] = details[map.total];
+      }
+
+      // -----------------------------
+      // 🎓 CREDIT
+      // -----------------------------
+      if (map.credit && details[map.credit] != null) {
+        updatedCandidate[`${key}CreditMax`] = details[map.credit];
+      }
