@@ -37,6 +37,7 @@ router.get(`/getUnit`, userController.getUnit)
 router.post(`/getPapers`, userController.getPapers)
 router.post(`/getDiscipline`, userController.getDiscipline)
 router.post(`/getAllDiscipline`, userController.getAllDescipline)
+router.post('/makeTranscript', userController.makeTranscript)
 
 
 //Private Routers

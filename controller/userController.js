@@ -4704,6 +4704,19 @@ class userController {
   }
 };
 
+static makeTranscript = async (req, res) => {
+  const myobj = req.body;
+  console.log("Values ", myobj)
+  if(myobj){
+    console.log("first")
+    return res.status(200).json({
+      status: "success",
+      message: "Transcript Generated Successfully",
+    });
+  }
+
+};
+
   
 }
 

@@ -110,7 +110,7 @@ class userController {
             process.env.JWT_SECRET_KEY,
             {
               expiresIn: "1d",
-            }
+            },
           );
           // res.cookie('jwt', token)
           // res.set('Authorization', 'Bearer '+ token);
@@ -153,7 +153,7 @@ class userController {
         const collection = database.collection("users");
         await collection.findOneAndUpdate(
           { _id: new ObjectId(req.user._id) },
-          { $set: { password: NewHashPassword } }
+          { $set: { password: NewHashPassword } },
         );
 
         res.status(200).send({
@@ -206,7 +206,7 @@ class userController {
         .collection("COURSE_DETAILS")
         .find(
           { PRG_CODE: req.body.PRG },
-          { projection: { sem: 1, DB_CL: 1, COURSE: 1 } }
+          { projection: { sem: 1, DB_CL: 1, COURSE: 1 } },
         )
         .toArray(function (err, result) {
           if (err) throw err;
@@ -299,7 +299,7 @@ class userController {
             .collection("users")
             .findOneAndUpdate(
               { _id: new ObjectId(user._id) },
-              { $set: { password: newpass } }
+              { $set: { password: newpass } },
             );
           res.send({
             status: "Sucess",
@@ -591,7 +591,7 @@ class userController {
       const candidate = database1.collection(PRG);
       await candidate.updateOne(
         { EN: req.body.EN, PDF: "PDF" },
-        { $set: { PDF: "---" } }
+        { $set: { PDF: "---" } },
       );
       // new data without _id
       const dataToInsert = { ...req.body };
@@ -1615,13 +1615,13 @@ class userController {
 
       if (profileData.length > 0) {
         await AdmissionDB.collection(`${program.DB_CL}_PROFILE`).insertMany(
-          profileData
+          profileData,
         );
       }
 
       if (resultData.length > 0) {
         await AdmissionDB.collection(`${program.DB_CL}1_RESULT`).insertMany(
-          resultData
+          resultData,
         );
       }
 
@@ -1644,15 +1644,15 @@ class userController {
 
         res.setHeader(
           "Content-Disposition",
-          "attachment; filename=wrong_Data_codes.xlsx"
+          "attachment; filename=wrong_Data_codes.xlsx",
         );
         res.setHeader(
           "Content-Type",
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         );
         res.setHeader(
           "X-Message",
-          `Total ${recordsToInsert.length} valid candidates`
+          `Total ${recordsToInsert.length} valid candidates`,
         );
 
         return res.send(exportBuffer);
@@ -1701,8 +1701,8 @@ class userController {
   };
 
   //============
-  //Uplaod of Marks
-  //==============
+  // Upload of Marks / Skill
+  //============
 
   static UploadMarks = async (req, res) => {
     if (!req.file) {
@@ -1726,21 +1726,23 @@ class userController {
         return res.send({ status: "Fail", message: "Excel file is empty" });
       }
 
-      // =========================
-      // VALIDATE HEADERS
-      // =========================
-      const REQUIRED_COLUMNS = ["rn", "sb", "pa", "en", "cat", "mrk11"];
       const excelColumns = Object.keys(data[0]);
 
-      const missingColumns = REQUIRED_COLUMNS.filter(
-        (c) => !excelColumns.includes(c)
+      // =========================
+      // DETECT TYPE
+      // =========================
+      const isSkillUpload = ["RN", "EN", "GRADE", "sk"].every((c) =>
+        excelColumns.includes(c),
       );
 
-      if (missingColumns.length) {
+      const isMarksUpload = ["rn", "sb", "pa", "en", "cat", "mrk11"].every(
+        (c) => excelColumns.includes(c),
+      );
+
+      if (!isSkillUpload && !isMarksUpload) {
         return res.send({
           status: "Fail",
           message: "Invalid Excel format",
-          missingColumns,
         });
       }
 
@@ -1754,23 +1756,114 @@ class userController {
         .find({ Session: myobj.session })
         .toArray();
 
+      // ⚡ FAST LOOKUP MAP
+      const candidateMap = new Map();
+      sessionCandidates.forEach((c) => {
+        const key = `${String(c.EnrolmentNumber).trim()}_${String(c.RollNumber).trim()}`;
+        candidateMap.set(key, c);
+      });
+
+      // =========================================================
+      // ==================== SKILL UPLOAD ========================
+      // =========================================================
+      if (isSkillUpload) {
+        const reportRows = [];
+        const bulkOps = [];
+
+        for (const [index, dt] of data.entries()) {
+          const report = {
+            row: index + 2,
+            RollNumber: dt.RN,
+            EnrolmentNumber: dt.EN,
+            Skill: dt.sk,
+            Grade: dt.GRADE,
+            Status: "FAILED",
+            Reason: "",
+          };
+
+          const key = `${String(dt.EN).trim()}_${String(dt.RN).trim()}`;
+          const candidate = candidateMap.get(key);
+
+          if (!candidate) {
+            report.Reason = "Candidate not found";
+            reportRows.push(report);
+            continue;
+          }
+
+          let grade = dt.GRADE;
+
+          if (!grade) {
+            report.Reason = "Grade missing";
+            reportRows.push(report);
+            continue;
+          }
+
+          grade = grade.toString().trim().toUpperCase();
+
+          // Already filled check
+          if (candidate.SkillGrade) {
+            report.Reason = "Skill already uploaded";
+            reportRows.push(report);
+            continue;
+          }
+
+          bulkOps.push({
+            updateOne: {
+              filter: { _id: candidate._id },
+              update: {
+                $set: {
+                  Skill: dt.sk,
+                  SkillGrade: grade,
+                },
+              },
+            },
+          });
+
+          report.Status = "UPDATED";
+          report.Reason = "Skill uploaded successfully";
+          reportRows.push(report);
+        }
+
+        if (bulkOps.length) {
+          await resultCol.bulkWrite(bulkOps);
+        }
+
+        const reportSheet = XLSX.utils.json_to_sheet(reportRows);
+        const reportBook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(reportBook, reportSheet, "Skill Report");
+
+        const buffer = XLSX.write(reportBook, {
+          bookType: "xlsx",
+          type: "buffer",
+        });
+
+        res.setHeader(
+          "Content-Disposition",
+          "attachment; filename=SkillUploadReport.xlsx",
+        );
+        res.setHeader(
+          "Content-Type",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        );
+
+        return res.send(buffer);
+      }
+
+      // =========================================================
+      // ==================== MARKS UPLOAD ========================
+      // =========================================================
+
       const reportRows = [];
       const bulkOps = [];
 
-      // =========================
-      // HELPER
-      // =========================
       const updateIfValid = (
         candidate,
         updateFields,
         report,
-        match,
         obtainedField,
         maxField,
-        marks
+        marks,
       ) => {
-        if (!match) return false;
-
         if (
           candidate[obtainedField] !== "" &&
           candidate[obtainedField] != null
@@ -1787,13 +1880,7 @@ class userController {
         return true;
       };
 
-      // =========================
-      // PROCESS EACH ROW
-      // =========================
-
       for (const [index, dt] of data.entries()) {
-        //Report
-
         const report = {
           row: index + 2,
           RollNumber: dt.rn,
@@ -1803,7 +1890,6 @@ class userController {
           Reason: "",
         };
 
-        //Discipline check
         const discipline = await nepDB
           .collection("DiciplineDetails")
           .findOne({ Number_Code: parseInt(dt.sb) });
@@ -1813,15 +1899,12 @@ class userController {
           reportRows.push(report);
           continue;
         }
+
         const disciplineName = discipline.DISCIPLINE.trim();
         report.Discipline = disciplineName;
 
-        //Candidate Check
-        const candidate = sessionCandidates.find(
-          (c) =>
-            String(c.EnrolmentNumber).trim() === String(dt.en).trim() &&
-            String(c.RollNumber).trim() === String(dt.rn).trim()
-        );
+        const key = `${String(dt.en).trim()}_${String(dt.rn).trim()}`;
+        const candidate = candidateMap.get(key);
 
         if (!candidate) {
           report.Reason = "Candidate not found";
@@ -1831,19 +1914,14 @@ class userController {
 
         const paCode = Number(dt.pa);
 
-        // MAJOR
         const isMajorTheory = paCode >= 1 && paCode <= 3;
         const isMajorPractical = paCode === 6;
         const isMajorCIA = paCode === 7;
 
-        // MINOR
         const isMinorTheory = paCode === 0;
         const isMinorPractical = paCode === 5;
         const isMinorCIA = paCode === 4;
 
-        // =========================
-        // FINAL DISCIPLINE CONFIG
-        // =========================
         const disciplineConfig = [
           {
             key: "MajorDiscipline1",
@@ -1854,23 +1932,19 @@ class userController {
             },
             papers: [
               {
-                name: "MajorDiscipline1Paper1",
                 obt: "MajorDiscipline1Paper1Obtained",
                 max: "MajorDiscipline1Paper1Max",
               },
               {
-                name: "MajorDiscipline1Paper2",
                 obt: "MajorDiscipline1Paper2Obtained",
                 max: "MajorDiscipline1Paper2Max",
               },
               {
-                name: "MajorDiscipline1Paper3",
                 obt: "MajorDiscipline1Paper3Obtained",
                 max: "MajorDiscipline1Paper3Max",
               },
             ],
             practical: {
-              name: "MajorDiscipline1Practical",
               obt: "MajorDiscipline1PracticalObtained",
               max: "MajorDiscipline1PracticalMax",
             },
@@ -1884,23 +1958,19 @@ class userController {
             },
             papers: [
               {
-                name: "MajorDiscipline2Paper1",
                 obt: "MajorDiscipline2Paper1Obtained",
                 max: "MajorDiscipline2Paper1Max",
               },
               {
-                name: "MajorDiscipline2Paper2",
                 obt: "MajorDiscipline2Paper2Obtained",
                 max: "MajorDiscipline2Paper2Max",
               },
               {
-                name: "MajorDiscipline2Paper3",
                 obt: "MajorDiscipline2Paper3Obtained",
                 max: "MajorDiscipline2Paper3Max",
               },
             ],
             practical: {
-              name: "MajorDiscipline2Practical",
               obt: "MajorDiscipline2PracticalObtained",
               max: "MajorDiscipline2PracticalMax",
             },
@@ -1914,17 +1984,14 @@ class userController {
             },
             papers: [
               {
-                name: "MajorDiscipline3Paper1",
                 obt: "MajorDiscipline3Paper1Obtained",
                 max: "MajorDiscipline3Paper1Max",
               },
               {
-                name: "MajorDiscipline3Paper2",
                 obt: "MajorDiscipline3Paper2Obtained",
                 max: "MajorDiscipline3Paper2Max",
               },
               {
-                name: "MajorDiscipline3Paper3",
                 obt: "MajorDiscipline3Paper3Obtained",
                 max: "MajorDiscipline3Paper3Max",
               },
@@ -1939,13 +2006,11 @@ class userController {
             },
             papers: [
               {
-                name: "MinorDisciplinePaper",
                 obt: "MinorDisciplinePaperObtained",
                 max: "MinorDisciplinePaperMax",
               },
             ],
             practical: {
-              name: "MinorDisciplinePractical",
               obt: "MinorDisciplinePracticalObtained",
               max: "MinorDisciplinePracticalMax",
             },
@@ -1956,151 +2021,86 @@ class userController {
         let updated = false;
 
         for (const d of disciplineConfig) {
-          // -------------------------
-          // BASIC GUARDS
-          // -------------------------
           if (!d.enabled) continue;
           if (candidate[d.key] !== disciplineName) continue;
 
           let marks = dt.mrk11;
-
-          // blank / null / undefined → "AA"
           if (marks === "" || marks === null || marks === undefined) {
             marks = "AA";
           }
 
-          // =========================
-          // MAJOR CIA
-          // =========================
           if (isMajorCIA && d.key.startsWith("Major")) {
             updated ||= updateIfValid(
               candidate,
               updateFields,
               report,
-              true,
               d.cia.obt,
               d.cia.max,
-              marks
+              marks,
             );
-          }
-
-          // =========================
-          // MINOR CIA
-          // =========================
-          else if (isMinorCIA && d.key === "MinorDiscipline") {
+          } else if (isMinorCIA && d.key === "MinorDiscipline") {
             updated ||= updateIfValid(
               candidate,
               updateFields,
               report,
-              true,
               d.cia.obt,
               d.cia.max,
-              marks
+              marks,
             );
-          }
-
-          // =========================
-          // MAJOR PRACTICAL
-          // =========================
-          else if (isMajorPractical && d.key.startsWith("Major")) {
-            if (d.practical) {
-              updated ||= updateIfValid(
-                candidate,
-                updateFields,
-                report,
-                true,
-                d.practical.obt,
-                d.practical.max,
-                marks
-              );
-            }
-          }
-
-          // =========================
-          // MINOR PRACTICAL
-          // =========================
-          else if (isMinorPractical && d.key === "MinorDiscipline") {
-            if (d.practical) {
-              updated ||= updateIfValid(
-                candidate,
-                updateFields,
-                report,
-                true,
-                d.practical.obt,
-                d.practical.max,
-                marks
-              );
-            }
-          }
-
-          // =========================
-          // MAJOR THEORY
-          // =========================
-          else if (
-            isMajorTheory &&
-            !isMajorPractical &&
-            d.key.startsWith("Major")
+          } else if (
+            isMajorPractical &&
+            d.key.startsWith("Major") &&
+            d.practical
           ) {
+            updated ||= updateIfValid(
+              candidate,
+              updateFields,
+              report,
+              d.practical.obt,
+              d.practical.max,
+              marks,
+            );
+          } else if (
+            isMinorPractical &&
+            d.key === "MinorDiscipline" &&
+            d.practical
+          ) {
+            updated ||= updateIfValid(
+              candidate,
+              updateFields,
+              report,
+              d.practical.obt,
+              d.practical.max,
+              marks,
+            );
+          } else if (isMajorTheory && d.key.startsWith("Major")) {
             const paperIndex = Number(paCode) - 1;
-
-            if (
-              Number.isInteger(paperIndex) &&
-              paperIndex >= 0 &&
-              paperIndex < d.papers.length
-            ) {
+            if (paperIndex >= 0 && paperIndex < d.papers.length) {
               const paper = d.papers[paperIndex];
-
               updated ||= updateIfValid(
                 candidate,
                 updateFields,
                 report,
-                true,
                 paper.obt,
                 paper.max,
-                marks
+                marks,
               );
             }
-          }
-
-          // =========================
-          // MINOR THEORY
-          // =========================
-          else if (
-            isMinorTheory &&
-            !isMinorPractical &&
-            d.key === "MinorDiscipline"
-          ) {
+          } else if (isMinorTheory && d.key === "MinorDiscipline") {
             const paper = d.papers[0];
-
             updated ||= updateIfValid(
               candidate,
               updateFields,
               report,
-              true,
               paper.obt,
               paper.max,
-              marks
+              marks,
             );
           }
         }
 
-        if (isMajorCIA) report.Paper = "MAJOR CIA";
-        else if (isMajorPractical) report.Paper = "MAJOR PRACTICAL";
-        else if (isMajorTheory) report.Paper = `MAJOR THEORY ${paCode}`;
-        else if (isMinorCIA) report.Paper = "MINOR CIA";
-        else if (isMinorPractical) report.Paper = "MINOR PRACTICAL";
-        else if (isMinorTheory) report.Paper = "MINOR THEORY";
-
-        // if (!updated) {
-        //   report.Reason = "Paper not linked or marks already uploaded";
-        //   reportRows.push(report);
-        //   continue;
-        // }
-
         if (!updated) {
-          if (!report.Reason) {
-            report.Reason = "Paper not linked or marks already uploaded";
-          }
+          report.Reason ||= "Paper not linked or marks already uploaded";
           reportRows.push(report);
           continue;
         }
@@ -2117,16 +2117,10 @@ class userController {
         reportRows.push(report);
       }
 
-      // =========================
-      // BULK WRITE
-      // =========================
       if (bulkOps.length) {
         await resultCol.bulkWrite(bulkOps);
       }
 
-      // =========================
-      // DOWNLOAD REPORT
-      // =========================
       const reportSheet = XLSX.utils.json_to_sheet(reportRows);
       const reportBook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(reportBook, reportSheet, "Upload Report");
@@ -2138,11 +2132,11 @@ class userController {
 
       res.setHeader(
         "Content-Disposition",
-        "attachment; filename=MarksUploadReport.xlsx"
+        "attachment; filename=MarksUploadReport.xlsx",
       );
       res.setHeader(
         "Content-Type",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       );
 
       return res.send(buffer);
@@ -2211,14 +2205,14 @@ class userController {
 
         // const invalidNumber = (obt, max) => (obt>=max?"AA":obt)
 
-        const aaj = ()=>{
+        const aaj = () => {
           const date = new Date();
           const day = String(date.getDate()).padStart(2, "0");
           const month = String(date.getMonth() + 1).padStart(2, "0");
           const year = date.getFullYear();
           const formattedDate = `${day}/${month}/${year}`;
-          return (formattedDate)
-        }
+          return formattedDate;
+        };
 
         const percent = (obt, max) =>
           safeInt(max) === 0
@@ -2227,7 +2221,7 @@ class userController {
 
         const isAbsent = (arr) =>
           arr.every(
-            (v) => v === "AA"
+            (v) => v === "AA",
             // || safeInt(v) === 0
           );
 
@@ -2238,7 +2232,7 @@ class userController {
             return (
               gradingSystem.find(
                 (g) =>
-                  g.percentageMarksMin === "A" && g.percentageMarksMax === "A"
+                  g.percentageMarksMin === "A" && g.percentageMarksMax === "A",
               ) || null
             );
           } else {
@@ -2246,7 +2240,7 @@ class userController {
               gradingSystem.find(
                 (g) =>
                   p >= Number(g.percentageMarksMin) &&
-                  p < Number(g.percentageMarksMax)
+                  p < Number(g.percentageMarksMax),
               ) || null
             );
           }
@@ -2256,8 +2250,8 @@ class userController {
           theoryAbsent || practicalAbsent
             ? "Ab"
             : overallPass
-            ? "PASS"
-            : "FAIL";
+              ? "PASS"
+              : "FAIL";
 
         // ======================
         // BULK + REPORT
@@ -2335,7 +2329,7 @@ class userController {
             m1hasPractical &&
             !isPass(
               s.MajorDiscipline1PracticalObtained,
-              s.MajorDiscipline1PracticalMax
+              s.MajorDiscipline1PracticalMax,
             )
           ) {
             m1OverallPass = false;
@@ -2429,7 +2423,7 @@ class userController {
             m2hasPractical &&
             !isPass(
               s.MajorDiscipline2PracticalObtained,
-              s.MajorDiscipline2PracticalMax
+              s.MajorDiscipline2PracticalMax,
             )
           ) {
             m2OverallPass = false;
@@ -2574,17 +2568,17 @@ class userController {
           const m1Status = getStatus(
             m1TheoryAbsent,
             m1PracticalAbsent,
-            m1OverallPass
+            m1OverallPass,
           );
           const m2Status = getStatus(
             m2TheoryAbsent,
             m2PracticalAbsent,
-            m2OverallPass
+            m2OverallPass,
           );
           const minorStatus = getStatus(
             minorTheoryAbsent,
             minorPracticalAbsent,
-            minorPass
+            minorPass,
           );
 
           // -------------------------
@@ -2596,7 +2590,7 @@ class userController {
           // COUNTS
           // -------------------------
           const failOnlyCount = statuses.filter((s) =>
-            ["FAIL", "Ab"].includes(s)
+            ["FAIL", "Ab"].includes(s),
           ).length;
 
           const hasAbsent = statuses.includes("Ab");
@@ -2654,7 +2648,7 @@ class userController {
           }
 
           const Sgpa = Number(
-            total([Cps1, Cps2, CpsMi]) / total([Ci1, Ci2, CiMi])
+            total([Cps1, Cps2, CpsMi]) / total([Ci1, Ci2, CiMi]),
           ).toFixed(2);
 
           // ======================
@@ -2672,7 +2666,6 @@ class userController {
             MajorDiscipline1Classisfication: m1Grade?.classisfication,
             Major1Status: m1Status,
             Major1Cps: Cps1,
-           
 
             // ======================
             // MAJOR 2
@@ -2709,7 +2702,7 @@ class userController {
             Remarks: "GRADING SYSTEM @40%",
             PDF: "PDF",
             RD: "MF001",
-            DOR: aaj()
+            DOR: aaj(),
           };
 
           bulkOps.push({
@@ -2743,11 +2736,11 @@ class userController {
 
         res.setHeader(
           "Content-Disposition",
-          "attachment; filename=ResultReport.xlsx"
+          "attachment; filename=ResultReport.xlsx",
         );
         res.setHeader(
           "Content-Type",
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         );
 
         return res.send(buffer);
@@ -2768,14 +2761,14 @@ class userController {
 
         const isPass = (obt, max) => safeInt(obt) >= calc40(max);
 
-        const aaj = ()=>{
+        const aaj = () => {
           const date = new Date();
           const day = String(date.getDate()).padStart(2, "0");
           const month = String(date.getMonth() + 1).padStart(2, "0");
           const year = date.getFullYear();
           const formattedDate = `${day}/${month}/${year}`;
-          return (formattedDate)
-        }
+          return formattedDate;
+        };
 
         const percent = (obt, max) =>
           safeInt(max) === 0
@@ -2792,7 +2785,7 @@ class userController {
             return (
               gradingSystem.find(
                 (g) =>
-                  g.percentageMarksMin === "A" && g.percentageMarksMax === "A"
+                  g.percentageMarksMin === "A" && g.percentageMarksMax === "A",
               ) || null
             );
           } else {
@@ -2800,7 +2793,7 @@ class userController {
               gradingSystem.find(
                 (g) =>
                   p >= Number(g.percentageMarksMin) &&
-                  p < Number(g.percentageMarksMax)
+                  p < Number(g.percentageMarksMax),
               ) || null
             );
           }
@@ -2985,37 +2978,37 @@ class userController {
           const m1Status = isAbsent([s.MajorDiscipline1Paper1Obtained])
             ? "Ab"
             : m1OverallPass && m1Grade?.classisfication !== "Failed"
-            ? "PASS"
-            : "FAIL";
+              ? "PASS"
+              : "FAIL";
 
           const m2Status = isAbsent([s.MajorDiscipline2Paper1Obtained])
             ? "Ab"
             : m2OverallPass && m2Grade?.classisfication !== "Failed"
-            ? "PASS"
-            : "FAIL";
+              ? "PASS"
+              : "FAIL";
           const m3Status = isAbsent([s.MajorDiscipline3Paper1Obtained])
             ? "Ab"
             : m3OverallPass && m3Grade?.classisfication !== "Failed"
-            ? "PASS"
-            : "FAIL";
+              ? "PASS"
+              : "FAIL";
           const minorStatus = isAbsent([s.MinorDisciplinePaperObtained])
             ? "Ab"
             : minorPass && minorGrade?.classisfication !== "Failed"
-            ? "PASS"
-            : "FAIL";
+              ? "PASS"
+              : "FAIL";
 
           // -------------------------
           // NORMALIZE STATUSES
           // -------------------------
           const statuses = [m1Status, m2Status, m3Status, minorStatus].filter(
-            Boolean
+            Boolean,
           ); // handles missing Major3 safely
 
           // -------------------------
           // COUNTS
           // -------------------------
           const failOnlyCount = statuses.filter((s) =>
-            ["FAIL", "Ab"].includes(s)
+            ["FAIL", "Ab"].includes(s),
           ).length;
 
           const hasAbsent = statuses.includes("Ab");
@@ -3050,7 +3043,7 @@ class userController {
           }
 
           const Sgpa = Number(
-            total([Cps1, Cps2, Cps3, CpsMi]) / total([Ci1, Ci2, Ci3, CiMi])
+            total([Cps1, Cps2, Cps3, CpsMi]) / total([Ci1, Ci2, Ci3, CiMi]),
           ).toFixed(2);
 
           // ======================
@@ -3108,7 +3101,7 @@ class userController {
             TotalSgpa: Sgpa,
             PDF: "PDF",
             RD: "MF001",
-            DOR: aaj()
+            DOR: aaj(),
           };
 
           bulkOps.push({
@@ -3142,11 +3135,11 @@ class userController {
 
         res.setHeader(
           "Content-Disposition",
-          "attachment; filename=ResultReport.xlsx"
+          "attachment; filename=ResultReport.xlsx",
         );
         res.setHeader(
           "Content-Type",
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         );
 
         return res.send(buffer);
@@ -3161,6 +3154,10 @@ class userController {
       await client.close();
     }
   };
+
+  //====================================================================================
+  //============= DETAILS FOR MARKS MODIFICATION AND DISCEPLINE (MAJOR/MINOR)===========
+  //====================================================================================
 
   static getdetailsNep = async (req, res) => {
     const myobj = req.body;
@@ -3177,31 +3174,27 @@ class userController {
       PDF: "PDF",
     };
 
-   
     const data = await database
       .collection(myobj?.SEM?.DB_CL + "_RESULT")
       .findOne(query);
 
-      if (!data) {
-        return res.status(401).json({
-          status: "Fail",
-          message: "Record Not Found! Report to System Manager please....",
-        });
-      }
+    if (!data) {
+      return res.status(401).json({
+        status: "Fail",
+        message: "Record Not Found! Report to System Manager please....",
+      });
+    }
 
-    const forProf = (myobj?.SEM?.DB_CL).slice(0,3)
+    const forProf = (myobj?.SEM?.DB_CL).slice(0, 3);
 
     const ProfileData = await database
       .collection(forProf + "_PROFILE")
-      .findOne(
-        {EnrolmentNumber: data.EnrolmentNumber}
-        );
+      .findOne({ EnrolmentNumber: data.EnrolmentNumber });
 
-        const newData = {
-          ...data, 
-          ...ProfileData
-        }
-        
+    const newData = {
+      ...data,
+      ...ProfileData,
+    };
 
     if (data) {
       res.status(200).send({
@@ -3216,8 +3209,11 @@ class userController {
     }
   };
 
-  static ModifyNepMarks = async (req, res) => {
+  //============================================================
+  //============MARKS MODIFICATION==============================
+  //============================================================
 
+  static ModifyNepMarks = async (req, res) => {
     const myobj = req.body;
 
     const { SEM, ...rest } = myobj;
@@ -3244,14 +3240,12 @@ class userController {
       PDF: "PDF",
     };
 
-      const collection = database.collection(myobj?.SEM?.DB_CL + "_RESULT");
+    const collection = database.collection(myobj?.SEM?.DB_CL + "_RESULT");
 
-      const student = await collection.findOne(query);
-
+    const student = await collection.findOne(query);
 
     if (student) {
-      if (!(myobj?.sem?.PRG_CODE === "PRE008")) {
-
+      if (!(myobj?.PRG_CODE === "PRE008")) {
         // ======================
         // HELPER FUNCTIONS
         // ======================
@@ -3263,20 +3257,19 @@ class userController {
 
         const isPass = (obt, max) => safeInt(obt) >= calc40(max);
 
-        const aaj = ()=>{
+        const aaj = () => {
           const date = new Date();
           const day = String(date.getDate()).padStart(2, "0");
           const month = String(date.getMonth() + 1).padStart(2, "0");
           const year = date.getFullYear();
           const formattedDate = `${day}/${month}/${year}`;
-          return (formattedDate)
-        }
+          return formattedDate;
+        };
 
-        const roundData = (rdc)=>{
-          const v = Number(rdc.slice(-1))
-          return ("MM00" + (v+1))
-          
-        }
+        const roundData = (rdc) => {
+          const v = Number(rdc.slice(-1));
+          return "MM00" + (v + 1);
+        };
 
         // const invalidNumber = (obt, max) => (obt>=max?"AA":obt)
 
@@ -3287,7 +3280,7 @@ class userController {
 
         const isAbsent = (arr) =>
           arr.every(
-            (v) => v === "AA"
+            (v) => v === "AA",
             // || safeInt(v) === 0
           );
 
@@ -3298,7 +3291,7 @@ class userController {
             return (
               gradingSystem.find(
                 (g) =>
-                  g.percentageMarksMin === "A" && g.percentageMarksMax === "A"
+                  g.percentageMarksMin === "A" && g.percentageMarksMax === "A",
               ) || null
             );
           } else {
@@ -3306,7 +3299,7 @@ class userController {
               gradingSystem.find(
                 (g) =>
                   p >= Number(g.percentageMarksMin) &&
-                  p < Number(g.percentageMarksMax)
+                  p < Number(g.percentageMarksMax),
               ) || null
             );
           }
@@ -3316,8 +3309,8 @@ class userController {
           theoryAbsent || practicalAbsent
             ? "Ab"
             : overallPass
-            ? "PASS"
-            : "FAIL";
+              ? "PASS"
+              : "FAIL";
 
         // ======================
         // BULK + REPORT
@@ -3395,7 +3388,7 @@ class userController {
             m1hasPractical &&
             !isPass(
               s.MajorDiscipline1PracticalObtained,
-              s.MajorDiscipline1PracticalMax
+              s.MajorDiscipline1PracticalMax,
             )
           ) {
             m1OverallPass = false;
@@ -3489,7 +3482,7 @@ class userController {
             m2hasPractical &&
             !isPass(
               s.MajorDiscipline2PracticalObtained,
-              s.MajorDiscipline2PracticalMax
+              s.MajorDiscipline2PracticalMax,
             )
           ) {
             m2OverallPass = false;
@@ -3634,17 +3627,17 @@ class userController {
           const m1Status = getStatus(
             m1TheoryAbsent,
             m1PracticalAbsent,
-            m1OverallPass
+            m1OverallPass,
           );
           const m2Status = getStatus(
             m2TheoryAbsent,
             m2PracticalAbsent,
-            m2OverallPass
+            m2OverallPass,
           );
           const minorStatus = getStatus(
             minorTheoryAbsent,
             minorPracticalAbsent,
-            minorPass
+            minorPass,
           );
 
           // -------------------------
@@ -3656,7 +3649,7 @@ class userController {
           // COUNTS
           // -------------------------
           const failOnlyCount = statuses.filter((s) =>
-            ["FAIL", "Ab"].includes(s)
+            ["FAIL", "Ab"].includes(s),
           ).length;
 
           const hasAbsent = statuses.includes("Ab");
@@ -3714,7 +3707,7 @@ class userController {
           }
 
           const Sgpa = Number(
-            total([Cps1, Cps2, CpsMi]) / total([Ci1, Ci2, CiMi])
+            total([Cps1, Cps2, CpsMi]) / total([Ci1, Ci2, CiMi]),
           ).toFixed(2);
 
           // ======================
@@ -3790,7 +3783,7 @@ class userController {
           });
 
           const { _id, ...oldStudentData } = student;
-          
+
           //Remove unwanted fields before insert
 
           const fieldsToRemove = [
@@ -3824,7 +3817,6 @@ class userController {
           delete s._id;
           delete finalResult._id;
 
-
           // INSERT NEW REVISED RESULT
           bulkOps.push({
             insertOne: {
@@ -3838,55 +3830,48 @@ class userController {
             },
           });
 
-          
-
           reportRows.push({
             EnrolmentNumber: s.EnrolmentNumber,
             RollNumber: s.RollNumber,
             ...finalResult,
           });
         }
-        
 
         try {
-
           if (bulkOps.length) {
             const result = await collection.bulkWrite(bulkOps, {
               ordered: true, // 🔥 better
             });
 
-          
-        
             // 🔥 YAHI PAR ADD KARNA HAI
             if (req.query.export === "excel") {
-        
               if (!reportRows.length) {
                 return res.status(400).json({
                   message: "No data to export",
                 });
               }
-        
+
               const workbook = XLSX.utils.book_new();
               const worksheet = XLSX.utils.json_to_sheet(reportRows);
               XLSX.utils.book_append_sheet(workbook, worksheet, "ResultReport");
-        
+
               const buffer = XLSX.write(workbook, {
                 bookType: "xlsx",
                 type: "buffer",
               });
-        
+
               res.setHeader(
                 "Content-Disposition",
-                "attachment; filename=ResultReport.xlsx"
+                "attachment; filename=ResultReport.xlsx",
               );
               res.setHeader(
                 "Content-Type",
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
               );
-        
+
               return res.send(buffer);
             }
-        
+
             // 🔥 NORMAL JSON RESPONSE
             return res.status(200).json({
               status: "success",
@@ -3895,13 +3880,11 @@ class userController {
               modified: result.modifiedCount,
             });
           }
-        
+
           return res.status(200).send("No operations");
-        
         } catch (error) {
-          console.log(error)
+          console.log(error);
         }
-      
       }
 
       // ======================================================================================================
@@ -3926,22 +3909,19 @@ class userController {
 
         // const isAbsent = (arr) => arr.map(safeInt).every((v) => v === 0);
 
-
-        const aaj = ()=>{
+        const aaj = () => {
           const date = new Date();
           const day = String(date.getDate()).padStart(2, "0");
           const month = String(date.getMonth() + 1).padStart(2, "0");
           const year = date.getFullYear();
           const formattedDate = `${day}/${month}/${year}`;
-          return (formattedDate)
-        }
+          return formattedDate;
+        };
 
-        const roundData = (rdc)=>{
-          const v = Number(rdc.slice(-1))
-          return ("MM00" + (v+1))
-          
-        }
-
+        const roundData = (rdc) => {
+          const v = Number(rdc.slice(-1));
+          return "MM00" + (v + 1);
+        };
 
         const isAbsent = (arr) =>
           arr.every((v) => v === "AA" || safeInt(v) === 0);
@@ -3951,7 +3931,7 @@ class userController {
             return (
               gradingSystem.find(
                 (g) =>
-                  g.percentageMarksMin === "A" && g.percentageMarksMax === "A"
+                  g.percentageMarksMin === "A" && g.percentageMarksMax === "A",
               ) || null
             );
           } else {
@@ -3959,7 +3939,7 @@ class userController {
               gradingSystem.find(
                 (g) =>
                   p >= Number(g.percentageMarksMin) &&
-                  p < Number(g.percentageMarksMax)
+                  p < Number(g.percentageMarksMax),
               ) || null
             );
           }
@@ -4144,37 +4124,37 @@ class userController {
           const m1Status = isAbsent([s.MajorDiscipline1Paper1Obtained])
             ? "Ab"
             : m1OverallPass && m1Grade?.classisfication !== "Failed"
-            ? "PASS"
-            : "FAIL";
+              ? "PASS"
+              : "FAIL";
 
           const m2Status = isAbsent([s.MajorDiscipline2Paper1Obtained])
             ? "Ab"
             : m2OverallPass && m2Grade?.classisfication !== "Failed"
-            ? "PASS"
-            : "FAIL";
+              ? "PASS"
+              : "FAIL";
           const m3Status = isAbsent([s.MajorDiscipline3Paper1Obtained])
             ? "Ab"
             : m3OverallPass && m3Grade?.classisfication !== "Failed"
-            ? "PASS"
-            : "FAIL";
+              ? "PASS"
+              : "FAIL";
           const minorStatus = isAbsent([s.MinorDisciplinePaperObtained])
             ? "Ab"
             : minorPass && minorGrade?.classisfication !== "Failed"
-            ? "PASS"
-            : "FAIL";
+              ? "PASS"
+              : "FAIL";
 
           // -------------------------
           // NORMALIZE STATUSES
           // -------------------------
           const statuses = [m1Status, m2Status, m3Status, minorStatus].filter(
-            Boolean
+            Boolean,
           ); // handles missing Major3 safely
 
           // -------------------------
           // COUNTS
           // -------------------------
           const failOnlyCount = statuses.filter((s) =>
-            ["FAIL", "Ab"].includes(s)
+            ["FAIL", "Ab"].includes(s),
           ).length;
 
           const hasAbsent = statuses.includes("Ab");
@@ -4209,7 +4189,7 @@ class userController {
           }
 
           const Sgpa = Number(
-            total([Cps1, Cps2, Cps3, CpsMi]) / total([Ci1, Ci2, Ci3, CiMi])
+            total([Cps1, Cps2, Cps3, CpsMi]) / total([Ci1, Ci2, Ci3, CiMi]),
           ).toFixed(2);
 
           // ======================
@@ -4293,33 +4273,32 @@ class userController {
           delete s._id;
           delete finalResult._id;
 
-            //Remove unwanted fields before insert
+          //Remove unwanted fields before insert
 
-            const fieldsToRemove = [
-              "Program",
-              "FormNumber",
-              "CuetRollNumber",
-              "ProgrameName",
-              "Unit",
-              "Name",
-              "FatherName",
-              "MotherName",
-              "ABCIdNumber",
-              "Gender",
-              "SocialCategory",
-              "AdharNumber",
-              "DateofBirth",
-              "YearOfAdmission",
-            ];
-  
-            const removeFields = (obj, fields) => {
-              fields.forEach((field) => delete obj[field]);
-              return obj;
-            };
-  
-            removeFields(oldStudentData, fieldsToRemove);
-            removeFields(s, fieldsToRemove);
-  
+          const fieldsToRemove = [
+            "Program",
+            "FormNumber",
+            "CuetRollNumber",
+            "ProgrameName",
+            "Unit",
+            "Name",
+            "FatherName",
+            "MotherName",
+            "ABCIdNumber",
+            "Gender",
+            "SocialCategory",
+            "AdharNumber",
+            "DateofBirth",
+            "YearOfAdmission",
+          ];
+
+          const removeFields = (obj, fields) => {
+            fields.forEach((field) => delete obj[field]);
+            return obj;
+          };
+
+          removeFields(oldStudentData, fieldsToRemove);
+          removeFields(s, fieldsToRemove);
 
           bulkOps.push({
             insertOne: {
@@ -4345,37 +4324,36 @@ class userController {
             const result = await collection.bulkWrite(bulkOps, {
               ordered: true, // 🔥 better
             });
-        
+
             // 🔥 YAHI PAR ADD KARNA HAI
             if (req.query.export === "excel") {
-        
               if (!reportRows.length) {
                 return res.status(400).json({
                   message: "No data to export",
                 });
               }
-        
+
               const workbook = XLSX.utils.book_new();
               const worksheet = XLSX.utils.json_to_sheet(reportRows);
               XLSX.utils.book_append_sheet(workbook, worksheet, "ResultReport");
-        
+
               const buffer = XLSX.write(workbook, {
                 bookType: "xlsx",
                 type: "buffer",
               });
-        
+
               res.setHeader(
                 "Content-Disposition",
-                "attachment; filename=ResultReport.xlsx"
+                "attachment; filename=ResultReport.xlsx",
               );
               res.setHeader(
                 "Content-Type",
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
               );
-        
+
               return res.send(buffer);
             }
-        
+
             // 🔥 NORMAL JSON RESPONSE
             return res.status(200).json({
               status: "success",
@@ -4384,21 +4362,349 @@ class userController {
               modified: result.modifiedCount,
             });
           }
-        
+
           return res.status(200).send("No operations");
-        
         } catch (error) {
-          console.log(error)
+          console.log(error);
         }
       }
     } else {
-
       return res.status(400).json({
         status: "Fail",
-        message: "Student Not Found..."
-      })
+        message: "Student Not Found...",
+      });
     }
   };
+
+  static getAllDescipline = async (req, res) => {
+    const myobj = req.body;
+    const client = new MongoClient(URL);
+    await client.connect();
+    const database = client.db("NEP");
+    const data = await database
+      .collection("Discipline")
+      .find({
+        PRG_CODE: myobj.PRG,
+        DB_CL: myobj.semester.DB_CL,
+        session: myobj.session,
+      })
+      .toArray();
+    res.status(200).send({
+      data,
+    });
+  };
+
+
+
+  static SubjectModify = async (req, res) => {
+  try {
+    // -----------------------------
+    // BASIC DATE INFO
+    // -----------------------------
+    const date = new Date();
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    const formattedDate = `${day}/${month}/${year}`;
+
+    // -----------------------------
+    // REAL Programe
+    // -----------------------------
+
+    const myobj = req.body;
+
+    const client = new MongoClient(URL);
+    await client.connect();
+
+    const database = client.db("NepUG");
+    const collection = database.collection(myobj.SEM.DB_CL + "_RESULT");
+
+    const database1 = client.db("NEP");
+
+    // 🔥 ONLY DISCIPLINE DETAILS
+    const disciplineDetails = await database1
+      .collection("DiciplineDetails")
+      .find({})
+      .toArray();
+
+    // 🔍 Candidate
+    const candidate = await collection.findOne({
+      RollNumber: myobj.RollNumber,
+      PDF: "PDF",
+    });
+
+    if (!candidate) {
+      return res.status(404).send("Candidate not found");
+    }
+
+    // -----------------------------
+    // 🔥 SUBJECT KEYS
+    // -----------------------------
+    const subjectKeys = Object.keys(myobj).filter(
+      (k) => !["SEM", "RollNumber"].includes(k),
+    );
+
+    // -----------------------------
+    // 🧹 CLONE + REMOVE OLD FIELDS
+    // -----------------------------
+    const updatedCandidate = { ...candidate };
+
+    delete updatedCandidate._id;
+    
+
+    subjectKeys.forEach((key) => {
+      Object.keys(updatedCandidate).forEach((field) => {
+        if (field.startsWith(key)) {
+          delete updatedCandidate[field];
+        }
+      });
+    });
+
+    updatedCandidate.OverAllResult = "Nil";
+    updatedCandidate.OverAllSemMarks = 0;
+
+    //=========================================
+    //Adding of Max and Obtained Fields
+    //==========================================
+
+    // -----------------------------
+    // 🔥 HELPERS
+    // -----------------------------
+    const getType = (key) => {
+      if (key.startsWith("Major")) return "Major";
+      if (key.startsWith("Minor")) return "Minor";
+      return null;
+    };
+
+    const normalize = (v) => v?.trim().toUpperCase();
+
+    // -----------------------------
+    // 🔥 MAPPING (CORE ENGINE)
+    // -----------------------------
+    const mapping = {
+      Major: {
+        papers: ["Major1Max", "Major2Max", "Major3Max"],
+        cia: "MajorCiaMax",
+        practical: "MajorPracticleMax",
+        total: "MajorTotalMax",
+        credit: "MajorTotalCreditMax",
+      },
+      Minor: {
+        papers: ["Minor1Max"],
+        cia: "Minor1CiaMax",
+        practical: "Minor1PracticleMax",
+        total: "MinorTotalMax",
+        credit: "MinorCreditMax",
+      },
+    };
+
+    // -----------------------------
+    // 🚀 MAIN LOOP
+    // -----------------------------
+    for (const key of subjectKeys) {
+      const dsp = myobj[key];
+      const type = getType(key);
+
+      if (!dsp || !type) continue;
+
+      // console.log("👉 Processing:", key, dsp, type);
+
+      // 🔍 FIND DISCIPLINE DETAILS
+      const details = disciplineDetails.find(
+        (d) => normalize(d.DISCIPLINE) === normalize(dsp),
+      );
+
+      if (!details) {
+        console.log("❌ No details found for:", dsp);
+        continue;
+      }
+    }
+
+    const remarksArr = []; // 🔥 collect all remarks
+
+    for (const key of subjectKeys) {
+      const dsp = myobj[key];
+      const type = getType(key); // Major / Minor
+
+      if (!dsp || !type) continue;
+
+      const details = disciplineDetails.find(
+        (d) => normalize(d.DISCIPLINE) === normalize(dsp),
+      );
+
+      if (!details) continue;
+
+      // 🎯 ADD REMARK
+      remarksArr.push(
+        `Subject Changed for ${key} to ${dsp} on ${formattedDate}`,
+      );
+
+      const map = mapping[type];
+
+      // -----------------------------
+      // 🎯 PAPERS LOOP
+      // -----------------------------
+     map.papers.forEach((field, index) => {
+       if (details[field] !== undefined) {
+         let base = "";
+
+         // ✅ Minor fix
+         if (type === "Minor") {
+           base = `${key}Paper`;
+         } else {
+           base = `${key}Paper${index + 1}`;
+         }
+
+         // MAX
+         updatedCandidate[`${base}Max`] = details[field];
+
+         // OBTAINED
+         updatedCandidate[`${base}Obtained`] = 0;
+       }
+     });
+      // -----------------------------
+      // 🎯 CIA
+      // -----------------------------
+      if (map.cia && details[map.cia] !== undefined) {
+        const base = `${key}Cia`;
+
+        updatedCandidate[`${base}Max`] = details[map.cia];
+        updatedCandidate[`${base}Obtained`] = 0;
+      }
+
+      // -----------------------------
+      // 🎯 PRACTICAL
+      // -----------------------------
+      if (map.practical && details[map.practical] !== undefined) {
+        const base = `${key}Practical`;
+
+        updatedCandidate[`${base}Max`] = details[map.practical];
+        updatedCandidate[`${base}Obtained`] = 0;
+      }
+
+      // -----------------------------
+      // 🎯 TOTAL
+      // -----------------------------
+      if (map.total && details[map.total] !== undefined) {
+        const base = `${key}Total`;
+
+        updatedCandidate[`${base}Max`] = details[map.total];
+        updatedCandidate[`${base}Obtained`] = 0;
+      }
+
+      // -----------------------------
+      // 🎯 CREDIT (optional: usually no obtained)
+      // -----------------------------
+      if (map.credit && details[map.credit] !== undefined) {
+        updatedCandidate[`${key}TotalCreditMax`] = details[map.credit];
+      }
+    }
+    // -----------------------------
+    // 🎯 FINAL REMARKS
+    // -----------------------------
+    if (remarksArr.length) {
+      updatedCandidate.Remarks = remarksArr.join("\n");
+    }
+
+    //================================================
+    //========Updating Papers Names=========
+    //================================================
+    const papers = await database1
+      .collection("PaperDetails")
+      .find({})
+      .toArray();
+
+   for (const key of subjectKeys) {
+     const dsp = myobj[key];
+     const type = getType(key); // Major / Minor
+
+     if (!dsp || !type) continue;
+
+     // 🎯 store subject
+     updatedCandidate[key] = dsp;
+
+     // 🎯 filter + sort papers (important)
+     const relatedPapers = papers
+       .filter(
+         (p) =>
+           normalize(p.DISCIPLINE) === normalize(dsp) &&
+           normalize(p.CBCS_CATEGORY) === normalize(type),
+       )
+       .sort((a, b) => Number(a.PaperCode) - Number(b.PaperCode));
+
+     if (!relatedPapers.length) continue;
+
+     // -----------------------------
+     // 🚀 LOOP
+     // -----------------------------
+     for (const p of relatedPapers) {
+       const code = Number(p.PaperCode);
+       let base = "";
+
+       // 🎯 PAPERS
+       if (type === "Minor") {
+         if (code === 0) base = `${key}Paper`; // Minor
+       } else {
+         if (code >= 1 && code <= 3) {
+           base = `${key}Paper${code}`; // Major
+         }
+       }
+
+       // 🎯 CIA
+       if (code === 4 || code === 7) {
+         base = `${key}Cia`;
+       }
+
+       // 🎯 PRACTICAL
+       if (code === 5 || code === 6) {
+         base = `${key}Practical`;
+       }
+
+       if (!base) continue;
+
+       // -----------------------------
+       // 🎯 COURSE NAME
+       // -----------------------------
+       updatedCandidate[base] = p.COURSE_NAME;
+
+       // -----------------------------
+       // 🔥 CREDIT LOGIC (NEW ADD)
+       // -----------------------------
+       if (p.MAXIMUM_CREDIT !== undefined) {
+         updatedCandidate[`${base}CreditMax`] = Number(p.MAXIMUM_CREDIT || 0);
+       }
+     }
+   }
+
+    // console.log("✅ Updated Candidate:", updatedCandidate);
+
+    // OLD record update
+    await collection.updateOne(
+      { RollNumber: myobj.RollNumber, PDF: "PDF" },
+      { $set: { PDF: "---" } },
+    );
+
+    // NEW record insert
+    await collection.insertOne({
+      RollNumber: myobj.RollNumber,
+      ...updatedCandidate,
+      createdAt: formattedDate,
+    });
+
+    // -----------------------------
+    // 📤 RESPONSE
+    // -----------------------------
+    res.send({
+      status: "OK",
+      message: "Subjects updated successfully (Mapping आधारित)",
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server Error");
+  }
+};
+
+  
 }
 
 export default userController;
