@@ -4706,10 +4706,18 @@ class userController {
 
 static makeTranscript = async (req, res) => {
   const myobj = req.body;
-  console.log("Values ", myobj)
+  // console.log("Values ", myobj)
+  const client = new MongoClient(URL);
+  await client.connect();
+  const database = client.db("NepUG");
+  const collection = database.collection(myobj.sem.DB_CL + "_RESULT");
+
+   const student = await collection.find({
+    PDF: "PDF",
+  }).toArray();
+  console.log("Students are", student)
   if(myobj){
-    console.log("first")
-    return res.status(200).json({
+      return res.status(200).json({
       status: "success",
       message: "Transcript Generated Successfully",
     });
@@ -4717,7 +4725,39 @@ static makeTranscript = async (req, res) => {
 
 };
 
-  
-}
+static getProfile = async (req, res) => {
+  const myobj = req.body;
+  const client = new MongoClient(URL);
+  await client.connect();
+  const database = client.db("COURSES");
+  const collection = await database.collection("COURSE_DETAILS").find({
+    PRG_CODE: myobj.PRG,
+  }).toArray();
+  console.log("Profile is", collection)
+
+  //  const student = await collection.findOne({
+  //   RollNumber: myobj.RollNumber,
+  //   PDF: "PDF",
+  // });
+
+  // if(student){
+      // return res.status(200).json({
+      // status: "success",
+      // message: "Profile Fetched Successfully",
+  //     data: student,
+    // });
+  // } else {
+  //   return res.status(404).json({
+  //     status: "Fail",
+  //     message: "Student Not Found...",
+  //   });
+  // }
+
+  return res.status(200).json({
+    status: "success",
+    message: "Profile Fetched Successfully",
+  }) 
+  };
+};
 
 export default userController;

@@ -20,6 +20,7 @@ router.use('/upLoadMarks',checkUserAuth)
 router.use('/makeResult', checkUserAuth)
 router.use('/modifyMarks', checkUserAuth)
 router.use('/subjectModify', checkUserAuth)
+router.use('/getProfile', checkUserAuth)
 
 
 
@@ -52,5 +53,6 @@ router.post('/upLoadMarks', upload.single("file"), userController.UploadMarks)
 router.post('/makeResult', userController.MakeResult)
 router.post('/modifyMarks', userController.ModifyNepMarks)
 router.use('/subjectModify', userController.SubjectModify)
+router.post('/getProfile', userController.getProfile)
 
 export default router
