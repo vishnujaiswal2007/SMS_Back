@@ -32,6 +32,10 @@ app.use(express.urlencoded({
 
 
 app.use('/', userRouters)
+app.use(
+  "/Photo",
+  express.static("/media/acc_inc/B/SMS/Photo")
+);
 
 //server creation and listening 
 const port=process.env.PORT

@@ -4725,39 +4725,84 @@ static makeTranscript = async (req, res) => {
 
 };
 
+
+
 static getProfile = async (req, res) => {
+
   const myobj = req.body;
+
   const client = new MongoClient(URL);
+
   await client.connect();
+
   const database = client.db("COURSES");
-  const collection = await database.collection("COURSE_DETAILS").find({
-    PRG_CODE: myobj.PRG,
-  }).toArray();
-  console.log("Profile is", collection)
 
-  //  const student = await collection.findOne({
-  //   RollNumber: myobj.RollNumber,
-  //   PDF: "PDF",
-  // });
+  const CourseDetails = await database
+    .collection("COURSE_DETAILS")
+    .find({
+      PRG_CODE: myobj.PRG,
+    })
+    .toArray();
 
-  // if(student){
-      // return res.status(200).json({
-      // status: "success",
-      // message: "Profile Fetched Successfully",
-  //     data: student,
-    // });
-  // } else {
-  //   return res.status(404).json({
-  //     status: "Fail",
-  //     message: "Student Not Found...",
-  //   });
-  // }
+  const StudentProfile = await client
+    .db("NepUG")
+    .collection(
+      CourseDetails[0].DB_CL.toString().slice(0, 3) + "_PROFILE"
+    )
+    .findOne({
+      EnrolmentNumber: myobj.enroll,
+      PDF: "PDF",
+    });
+
+  // Agar profile nahi mili
+  if (!StudentProfile) {
+
+    return res.status(404).json({
+      status: "Fail",
+      message: "Student Not Found...",
+    });
+
+  }
+
+  const ln = CourseDetails.length;
+
+  // Sare Roll Numbers StudentProfile me add kar do
+  for (let i = 0; i < ln; i++) {
+
+    const student = await client
+      .db("NepUG")
+      .collection(CourseDetails[i].DB_CL + "_RESULT")
+      .findOne(
+        {
+          EnrolmentNumber: myobj.enroll,
+          PDF: "PDF",
+        },
+        {
+          projection: {
+            RollNumber: 1,
+            _id: 0,
+          },
+        }
+      );
+
+    // Agar RollNumber mila
+    if (student?.RollNumber) {
+
+      StudentProfile[`RN${i + 1}`] = student.RollNumber;
+
+    }
+
+  }
+ 
+  // console.log("Profile of Candidate is ", StudentProfile);
 
   return res.status(200).json({
     status: "success",
     message: "Profile Fetched Successfully",
-  }) 
-  };
+    data: StudentProfile,
+  });
+
+};
 };
 
 export default userController;
