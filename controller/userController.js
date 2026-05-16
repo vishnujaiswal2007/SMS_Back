@@ -10,6 +10,8 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import transporter from "../config/emailconfig.js";
 import * as XLSX from "xlsx";
+import fs from "fs";
+import path from "path";
 
 class userController {
   static userRegistration = async (req, res) => {
@@ -4394,10 +4396,406 @@ class userController {
     });
   };
 
-
-
   static SubjectModify = async (req, res) => {
-  try {
+    try {
+      // -----------------------------
+      // BASIC DATE INFO
+      // -----------------------------
+      const date = new Date();
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+      const formattedDate = `${day}/${month}/${year}`;
+
+      // -----------------------------
+      // REAL Programe
+      // -----------------------------
+
+      const myobj = req.body;
+
+      const client = new MongoClient(URL);
+      await client.connect();
+
+      const database = client.db("NepUG");
+      const collection = database.collection(myobj.SEM.DB_CL + "_RESULT");
+
+      const database1 = client.db("NEP");
+
+      // 🔥 ONLY DISCIPLINE DETAILS
+      const disciplineDetails = await database1
+        .collection("DiciplineDetails")
+        .find({})
+        .toArray();
+
+      // 🔍 Candidate
+      const candidate = await collection.findOne({
+        RollNumber: myobj.RollNumber,
+        PDF: "PDF",
+      });
+
+      if (!candidate) {
+        return res.status(404).send("Candidate not found");
+      }
+
+      // -----------------------------
+      // 🔥 SUBJECT KEYS
+      // -----------------------------
+      const subjectKeys = Object.keys(myobj).filter(
+        (k) => !["SEM", "RollNumber"].includes(k),
+      );
+
+      // -----------------------------
+      // 🧹 CLONE + REMOVE OLD FIELDS
+      // -----------------------------
+      const updatedCandidate = { ...candidate };
+
+      delete updatedCandidate._id;
+
+      subjectKeys.forEach((key) => {
+        Object.keys(updatedCandidate).forEach((field) => {
+          if (field.startsWith(key)) {
+            delete updatedCandidate[field];
+          }
+        });
+      });
+
+      updatedCandidate.OverAllResult = "Nil";
+      updatedCandidate.OverAllSemMarks = 0;
+
+      //=========================================
+      //Adding of Max and Obtained Fields
+      //==========================================
+
+      // -----------------------------
+      // 🔥 HELPERS
+      // -----------------------------
+      const getType = (key) => {
+        if (key.startsWith("Major")) return "Major";
+        if (key.startsWith("Minor")) return "Minor";
+        return null;
+      };
+
+      const normalize = (v) => v?.trim().toUpperCase();
+
+      // -----------------------------
+      // 🔥 MAPPING (CORE ENGINE)
+      // -----------------------------
+      const mapping = {
+        Major: {
+          papers: ["Major1Max", "Major2Max", "Major3Max"],
+          cia: "MajorCiaMax",
+          practical: "MajorPracticleMax",
+          total: "MajorTotalMax",
+          credit: "MajorTotalCreditMax",
+        },
+        Minor: {
+          papers: ["Minor1Max"],
+          cia: "Minor1CiaMax",
+          practical: "Minor1PracticleMax",
+          total: "MinorTotalMax",
+          credit: "MinorCreditMax",
+        },
+      };
+
+      // -----------------------------
+      // 🚀 MAIN LOOP
+      // -----------------------------
+      for (const key of subjectKeys) {
+        const dsp = myobj[key];
+        const type = getType(key);
+
+        if (!dsp || !type) continue;
+
+        // console.log("👉 Processing:", key, dsp, type);
+
+        // 🔍 FIND DISCIPLINE DETAILS
+        const details = disciplineDetails.find(
+          (d) => normalize(d.DISCIPLINE) === normalize(dsp),
+        );
+
+        if (!details) {
+          console.log("❌ No details found for:", dsp);
+          continue;
+        }
+      }
+
+      const remarksArr = []; // 🔥 collect all remarks
+
+      for (const key of subjectKeys) {
+        const dsp = myobj[key];
+        const type = getType(key); // Major / Minor
+
+        if (!dsp || !type) continue;
+
+        const details = disciplineDetails.find(
+          (d) => normalize(d.DISCIPLINE) === normalize(dsp),
+        );
+
+        if (!details) continue;
+
+        // 🎯 ADD REMARK
+        remarksArr.push(
+          `Subject Changed for ${key} to ${dsp} on ${formattedDate}`,
+        );
+
+        const map = mapping[type];
+
+        // -----------------------------
+        // 🎯 PAPERS LOOP
+        // -----------------------------
+        map.papers.forEach((field, index) => {
+          if (details[field] !== undefined) {
+            let base = "";
+
+            // ✅ Minor fix
+            if (type === "Minor") {
+              base = `${key}Paper`;
+            } else {
+              base = `${key}Paper${index + 1}`;
+            }
+
+            // MAX
+            updatedCandidate[`${base}Max`] = details[field];
+
+            // OBTAINED
+            updatedCandidate[`${base}Obtained`] = 0;
+          }
+        });
+        // -----------------------------
+        // 🎯 CIA
+        // -----------------------------
+        if (map.cia && details[map.cia] !== undefined) {
+          const base = `${key}Cia`;
+
+          updatedCandidate[`${base}Max`] = details[map.cia];
+          updatedCandidate[`${base}Obtained`] = 0;
+        }
+
+        // -----------------------------
+        // 🎯 PRACTICAL
+        // -----------------------------
+        if (map.practical && details[map.practical] !== undefined) {
+          const base = `${key}Practical`;
+
+          updatedCandidate[`${base}Max`] = details[map.practical];
+          updatedCandidate[`${base}Obtained`] = 0;
+        }
+
+        // -----------------------------
+        // 🎯 TOTAL
+        // -----------------------------
+        if (map.total && details[map.total] !== undefined) {
+          const base = `${key}Total`;
+
+          updatedCandidate[`${base}Max`] = details[map.total];
+          updatedCandidate[`${base}Obtained`] = 0;
+        }
+
+        // -----------------------------
+        // 🎯 CREDIT (optional: usually no obtained)
+        // -----------------------------
+        if (map.credit && details[map.credit] !== undefined) {
+          updatedCandidate[`${key}TotalCreditMax`] = details[map.credit];
+        }
+      }
+      // -----------------------------
+      // 🎯 FINAL REMARKS
+      // -----------------------------
+      if (remarksArr.length) {
+        updatedCandidate.Remarks = remarksArr.join("\n");
+      }
+
+      //================================================
+      //========Updating Papers Names=========
+      //================================================
+      const papers = await database1
+        .collection("PaperDetails")
+        .find({})
+        .toArray();
+
+      for (const key of subjectKeys) {
+        const dsp = myobj[key];
+        const type = getType(key); // Major / Minor
+
+        if (!dsp || !type) continue;
+
+        // 🎯 store subject
+        updatedCandidate[key] = dsp;
+
+        // 🎯 filter + sort papers (important)
+        const relatedPapers = papers
+          .filter(
+            (p) =>
+              normalize(p.DISCIPLINE) === normalize(dsp) &&
+              normalize(p.CBCS_CATEGORY) === normalize(type),
+          )
+          .sort((a, b) => Number(a.PaperCode) - Number(b.PaperCode));
+
+        if (!relatedPapers.length) continue;
+
+        // -----------------------------
+        // 🚀 LOOP
+        // -----------------------------
+        for (const p of relatedPapers) {
+          const code = Number(p.PaperCode);
+          let base = "";
+
+          // 🎯 PAPERS
+          if (type === "Minor") {
+            if (code === 0) base = `${key}Paper`; // Minor
+          } else {
+            if (code >= 1 && code <= 3) {
+              base = `${key}Paper${code}`; // Major
+            }
+          }
+
+          // 🎯 CIA
+          if (code === 4 || code === 7) {
+            base = `${key}Cia`;
+          }
+
+          // 🎯 PRACTICAL
+          if (code === 5 || code === 6) {
+            base = `${key}Practical`;
+          }
+
+          if (!base) continue;
+
+          // -----------------------------
+          // 🎯 COURSE NAME
+          // -----------------------------
+          updatedCandidate[base] = p.COURSE_NAME;
+
+          // -----------------------------
+          // 🔥 CREDIT LOGIC (NEW ADD)
+          // -----------------------------
+          if (p.MAXIMUM_CREDIT !== undefined) {
+            updatedCandidate[`${base}CreditMax`] = Number(
+              p.MAXIMUM_CREDIT || 0,
+            );
+          }
+        }
+      }
+
+      // console.log("✅ Updated Candidate:", updatedCandidate);
+
+      // OLD record update
+      await collection.updateOne(
+        { RollNumber: myobj.RollNumber, PDF: "PDF" },
+        { $set: { PDF: "---" } },
+      );
+
+      // NEW record insert
+      await collection.insertOne({
+        RollNumber: myobj.RollNumber,
+        ...updatedCandidate,
+        createdAt: formattedDate,
+      });
+
+      // -----------------------------
+      // 📤 RESPONSE
+      // -----------------------------
+      res.send({
+        status: "OK",
+        message: "Subjects updated successfully (Mapping आधारित)",
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).send("Server Error");
+    }
+  };
+
+  static makeTranscript = async (req, res) => {
+    const myobj = req.body;
+    // console.log("Values ", myobj)
+    const client = new MongoClient(URL);
+    await client.connect();
+    const database = client.db("NepUG");
+    const collection = database.collection(myobj.sem.DB_CL + "_RESULT");
+
+    const student = await collection
+      .find({
+        PDF: "PDF",
+      })
+      .toArray();
+    console.log("Students are", student);
+    if (myobj) {
+      return res.status(200).json({
+        status: "success",
+        message: "Transcript Generated Successfully",
+      });
+    }
+  };
+
+  static getProfile = async (req, res) => {
+    const myobj = req.body;
+
+    const client = new MongoClient(URL);
+
+    await client.connect();
+
+    const database = client.db("COURSES");
+
+    const CourseDetails = await database
+      .collection("COURSE_DETAILS")
+      .find({
+        PRG_CODE: myobj.PRG,
+      })
+      .toArray();
+
+    const StudentProfile = await client
+      .db("NepUG")
+      .collection(CourseDetails[0].DB_CL.toString().slice(0, 3) + "_PROFILE")
+      .findOne({
+        EnrolmentNumber: myobj.enroll,
+        PDF: "PDF",
+      });
+
+    // Agar profile nahi mili
+    if (!StudentProfile) {
+      return res.status(404).json({
+        status: "Fail",
+        message: "Student Not Found...",
+      });
+    }
+
+    const ln = CourseDetails.length;
+
+    // Sare Roll Numbers StudentProfile me add kar do
+    for (let i = 0; i < ln; i++) {
+      const student = await client
+        .db("NepUG")
+        .collection(CourseDetails[i].DB_CL + "_RESULT")
+        .findOne(
+          {
+            EnrolmentNumber: myobj.enroll,
+            PDF: "PDF",
+          },
+          {
+            projection: {
+              RollNumber: 1,
+              _id: 0,
+            },
+          },
+        );
+
+      // Agar RollNumber mila
+      if (student?.RollNumber) {
+        StudentProfile[`RN${i + 1}`] = student.RollNumber;
+      }
+    }
+
+    // console.log("Profile of Candidate is ", StudentProfile);
+    
+
+    return res.status(200).json({
+      status: "success",
+      message: "Profile Fetched Successfully",
+      data: StudentProfile,
+    });
+  };
+
+  static updateProfile = async (req, res) => {
     // -----------------------------
     // BASIC DATE INFO
     // -----------------------------
@@ -4405,404 +4803,138 @@ class userController {
     const day = String(date.getDate()).padStart(2, "0");
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
-    const formattedDate = `${day}/${month}/${year}`;
+    const documentDate = `${day}_${month}_${year}`;
+    const createdDate = `${day}/${month}/${year}`;
 
-    // -----------------------------
-    // REAL Programe
-    // -----------------------------
+    // STRING → OBJECT
 
-    const myobj = req.body;
+    const candidate = JSON.parse(req.body.candidate);
 
-    const client = new MongoClient(URL);
-    await client.connect();
+    delete candidate._id;
 
-    const database = client.db("NepUG");
-    const collection = database.collection(myobj.SEM.DB_CL + "_RESULT");
-
-    const database1 = client.db("NEP");
-
-    // 🔥 ONLY DISCIPLINE DETAILS
-    const disciplineDetails = await database1
-      .collection("DiciplineDetails")
-      .find({})
-      .toArray();
-
-    // 🔍 Candidate
-    const candidate = await collection.findOne({
-      RollNumber: myobj.RollNumber,
-      PDF: "PDF",
+    Object.keys(candidate).forEach((key) => {
+      if (key.startsWith("RN")) {
+        delete candidate[key];
+      }
     });
 
-    if (!candidate) {
-      return res.status(404).send("Candidate not found");
-    }
+    try {
+      const labelMap = {
+        PRE006: "BAN",
+        PRE007: "BSN",
+        PRE008: "BCN",
+      };
 
-    // -----------------------------
-    // 🔥 SUBJECT KEYS
-    // -----------------------------
-    const subjectKeys = Object.keys(myobj).filter(
-      (k) => !["SEM", "RollNumber"].includes(k),
-    );
+     if (
+       req.files &&
+       req.files.Candidature &&
+       req.files.Candidature.length > 0
+     ) {
+       const file = req.files.Candidature[0];
 
-    // -----------------------------
-    // 🧹 CLONE + REMOVE OLD FIELDS
-    // -----------------------------
-    const updatedCandidate = { ...candidate };
+       // =====================================
+       // CUSTOM FOLDER
+       // =====================================
 
-    delete updatedCandidate._id;
-    
+       const folderPath = path.join(
+         "/media/acc_inc/B/SMS/Documents",
+         candidate.EnrolmentNumber,
+         "Candidature",
+       );
 
-    subjectKeys.forEach((key) => {
-      Object.keys(updatedCandidate).forEach((field) => {
-        if (field.startsWith(key)) {
-          delete updatedCandidate[field];
-        }
-      });
-    });
+       // =====================================
+       // CREATE FOLDER IF NOT EXISTS
+       // =====================================
 
-    updatedCandidate.OverAllResult = "Nil";
-    updatedCandidate.OverAllSemMarks = 0;
+       fs.mkdirSync(folderPath, {
+         recursive: true,
+       });
 
-    //=========================================
-    //Adding of Max and Obtained Fields
-    //==========================================
+       // =====================================
+       // FILE EXTENSION
+       // =====================================
 
-    // -----------------------------
-    // 🔥 HELPERS
-    // -----------------------------
-    const getType = (key) => {
-      if (key.startsWith("Major")) return "Major";
-      if (key.startsWith("Minor")) return "Minor";
-      return null;
-    };
+       const ext = path.extname(file.originalname);
 
-    const normalize = (v) => v?.trim().toUpperCase();
+       // =====================================
+       // CUSTOM FILE NAME
+       // =====================================
 
-    // -----------------------------
-    // 🔥 MAPPING (CORE ENGINE)
-    // -----------------------------
-    const mapping = {
-      Major: {
-        papers: ["Major1Max", "Major2Max", "Major3Max"],
-        cia: "MajorCiaMax",
-        practical: "MajorPracticleMax",
-        total: "MajorTotalMax",
-        credit: "MajorTotalCreditMax",
-      },
-      Minor: {
-        papers: ["Minor1Max"],
-        cia: "Minor1CiaMax",
-        practical: "Minor1PracticleMax",
-        total: "MinorTotalMax",
-        credit: "MinorCreditMax",
-      },
-    };
+       const fileName = `Dated_${documentDate}${ext}`;
 
-    // -----------------------------
-    // 🚀 MAIN LOOP
-    // -----------------------------
-    for (const key of subjectKeys) {
-      const dsp = myobj[key];
-      const type = getType(key);
+       // =====================================
+       // FINAL ABSOLUTE PATH
+       // =====================================
 
-      if (!dsp || !type) continue;
+       const finalPath = path.join(folderPath, fileName);
 
-      // console.log("👉 Processing:", key, dsp, type);
+       // =====================================
+       // SAVE FILE
+       // =====================================
 
-      // 🔍 FIND DISCIPLINE DETAILS
-      const details = disciplineDetails.find(
-        (d) => normalize(d.DISCIPLINE) === normalize(dsp),
-      );
+       fs.writeFileSync(finalPath, file.buffer);
 
-      if (!details) {
-        console.log("❌ No details found for:", dsp);
-        continue;
-      }
-    }
+       // =====================================
+       // SAVE RELATIVE PATH IN DATABASE
+       // =====================================
 
-    const remarksArr = []; // 🔥 collect all remarks
-
-    for (const key of subjectKeys) {
-      const dsp = myobj[key];
-      const type = getType(key); // Major / Minor
-
-      if (!dsp || !type) continue;
-
-      const details = disciplineDetails.find(
-        (d) => normalize(d.DISCIPLINE) === normalize(dsp),
-      );
-
-      if (!details) continue;
-
-      // 🎯 ADD REMARK
-      remarksArr.push(
-        `Subject Changed for ${key} to ${dsp} on ${formattedDate}`,
-      );
-
-      const map = mapping[type];
-
-      // -----------------------------
-      // 🎯 PAPERS LOOP
-      // -----------------------------
-     map.papers.forEach((field, index) => {
-       if (details[field] !== undefined) {
-         let base = "";
-
-         // ✅ Minor fix
-         if (type === "Minor") {
-           base = `${key}Paper`;
-         } else {
-           base = `${key}Paper${index + 1}`;
-         }
-
-         // MAX
-         updatedCandidate[`${base}Max`] = details[field];
-
-         // OBTAINED
-         updatedCandidate[`${base}Obtained`] = 0;
-       }
-     });
-      // -----------------------------
-      // 🎯 CIA
-      // -----------------------------
-      if (map.cia && details[map.cia] !== undefined) {
-        const base = `${key}Cia`;
-
-        updatedCandidate[`${base}Max`] = details[map.cia];
-        updatedCandidate[`${base}Obtained`] = 0;
-      }
-
-      // -----------------------------
-      // 🎯 PRACTICAL
-      // -----------------------------
-      if (map.practical && details[map.practical] !== undefined) {
-        const base = `${key}Practical`;
-
-        updatedCandidate[`${base}Max`] = details[map.practical];
-        updatedCandidate[`${base}Obtained`] = 0;
-      }
-
-      // -----------------------------
-      // 🎯 TOTAL
-      // -----------------------------
-      if (map.total && details[map.total] !== undefined) {
-        const base = `${key}Total`;
-
-        updatedCandidate[`${base}Max`] = details[map.total];
-        updatedCandidate[`${base}Obtained`] = 0;
-      }
-
-      // -----------------------------
-      // 🎯 CREDIT (optional: usually no obtained)
-      // -----------------------------
-      if (map.credit && details[map.credit] !== undefined) {
-        updatedCandidate[`${key}TotalCreditMax`] = details[map.credit];
-      }
-    }
-    // -----------------------------
-    // 🎯 FINAL REMARKS
-    // -----------------------------
-    if (remarksArr.length) {
-      updatedCandidate.Remarks = remarksArr.join("\n");
-    }
-
-    //================================================
-    //========Updating Papers Names=========
-    //================================================
-    const papers = await database1
-      .collection("PaperDetails")
-      .find({})
-      .toArray();
-
-   for (const key of subjectKeys) {
-     const dsp = myobj[key];
-     const type = getType(key); // Major / Minor
-
-     if (!dsp || !type) continue;
-
-     // 🎯 store subject
-     updatedCandidate[key] = dsp;
-
-     // 🎯 filter + sort papers (important)
-     const relatedPapers = papers
-       .filter(
-         (p) =>
-           normalize(p.DISCIPLINE) === normalize(dsp) &&
-           normalize(p.CBCS_CATEGORY) === normalize(type),
-       )
-       .sort((a, b) => Number(a.PaperCode) - Number(b.PaperCode));
-
-     if (!relatedPapers.length) continue;
-
-     // -----------------------------
-     // 🚀 LOOP
-     // -----------------------------
-     for (const p of relatedPapers) {
-       const code = Number(p.PaperCode);
-       let base = "";
-
-       // 🎯 PAPERS
-       if (type === "Minor") {
-         if (code === 0) base = `${key}Paper`; // Minor
-       } else {
-         if (code >= 1 && code <= 3) {
-           base = `${key}Paper${code}`; // Major
-         }
-       }
-
-       // 🎯 CIA
-       if (code === 4 || code === 7) {
-         base = `${key}Cia`;
-       }
-
-       // 🎯 PRACTICAL
-       if (code === 5 || code === 6) {
-         base = `${key}Practical`;
-       }
-
-       if (!base) continue;
-
-       // -----------------------------
-       // 🎯 COURSE NAME
-       // -----------------------------
-       updatedCandidate[base] = p.COURSE_NAME;
-
-       // -----------------------------
-       // 🔥 CREDIT LOGIC (NEW ADD)
-       // -----------------------------
-       if (p.MAXIMUM_CREDIT !== undefined) {
-         updatedCandidate[`${base}CreditMax`] = Number(p.MAXIMUM_CREDIT || 0);
-       }
+       candidate.CandidatureDocument = path
+         .join("/Documents", candidate.EnrolmentNumber, "Candidature", fileName)
+         .replace(/\\/g, "/");
      }
-   }
 
-    // console.log("✅ Updated Candidate:", updatedCandidate);
+      const client = new MongoClient(URL);
 
-    // OLD record update
-    await collection.updateOne(
-      { RollNumber: myobj.RollNumber, PDF: "PDF" },
-      { $set: { PDF: "---" } },
-    );
+      await client.connect();
 
-    // NEW record insert
-    await collection.insertOne({
-      RollNumber: myobj.RollNumber,
-      ...updatedCandidate,
-      createdAt: formattedDate,
-    });
+      const database = client.db("NepUG");
 
-    // -----------------------------
-    // 📤 RESPONSE
-    // -----------------------------
-    res.send({
-      status: "OK",
-      message: "Subjects updated successfully (Mapping आधारित)",
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Server Error");
-  }
-};
+      const collection = database.collection(
+        labelMap[candidate.PRG_CODE] + "_PROFILE",
+      );
 
-static makeTranscript = async (req, res) => {
-  const myobj = req.body;
-  // console.log("Values ", myobj)
-  const client = new MongoClient(URL);
-  await client.connect();
-  const database = client.db("NepUG");
-  const collection = database.collection(myobj.sem.DB_CL + "_RESULT");
+      // =====================================
+      // OLD RECORD INACTIVE
+      // =====================================
 
-   const student = await collection.find({
-    PDF: "PDF",
-  }).toArray();
-  console.log("Students are", student)
-  if(myobj){
-      return res.status(200).json({
-      status: "success",
-      message: "Transcript Generated Successfully",
-    });
-  }
-
-};
-
-
-
-static getProfile = async (req, res) => {
-
-  const myobj = req.body;
-
-  const client = new MongoClient(URL);
-
-  await client.connect();
-
-  const database = client.db("COURSES");
-
-  const CourseDetails = await database
-    .collection("COURSE_DETAILS")
-    .find({
-      PRG_CODE: myobj.PRG,
-    })
-    .toArray();
-
-  const StudentProfile = await client
-    .db("NepUG")
-    .collection(
-      CourseDetails[0].DB_CL.toString().slice(0, 3) + "_PROFILE"
-    )
-    .findOne({
-      EnrolmentNumber: myobj.enroll,
-      PDF: "PDF",
-    });
-
-  // Agar profile nahi mili
-  if (!StudentProfile) {
-
-    return res.status(404).json({
-      status: "Fail",
-      message: "Student Not Found...",
-    });
-
-  }
-
-  const ln = CourseDetails.length;
-
-  // Sare Roll Numbers StudentProfile me add kar do
-  for (let i = 0; i < ln; i++) {
-
-    const student = await client
-      .db("NepUG")
-      .collection(CourseDetails[i].DB_CL + "_RESULT")
-      .findOne(
+      await collection.updateOne(
         {
-          EnrolmentNumber: myobj.enroll,
+          EnrolmentNumber: candidate.EnrolmentNumber,
           PDF: "PDF",
         },
+
         {
-          projection: {
-            RollNumber: 1,
-            _id: 0,
+          $set: {
+            PDF: "---",
           },
-        }
+        },
       );
 
-    // Agar RollNumber mila
-    if (student?.RollNumber) {
+      // =====================================
+      // NEW RECORD SAVE
+      // =====================================
 
-      StudentProfile[`RN${i + 1}`] = student.RollNumber;
+      candidate.PDF = "PDF";
 
+      candidate.DateOfModification = createdDate;
+
+      await collection.insertOne(candidate);
+
+      // =====================================
+
+      res.send({
+        status: "success",
+        message: "Profile Updated Successfully",
+      });
+    } catch (error) {
+      console.log(error);
+
+      res.status(500).send({
+        status: "failed",
+        message: "Internal Server Error",
+      });
     }
-
-  }
- 
-  // console.log("Profile of Candidate is ", StudentProfile);
-
-  return res.status(200).json({
-    status: "success",
-    message: "Profile Fetched Successfully",
-    data: StudentProfile,
-  });
-
-};
-};
+  };
+}
 
 export default userController;

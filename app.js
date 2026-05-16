@@ -37,6 +37,11 @@ app.use(
   express.static("/media/acc_inc/B/SMS/Photo")
 );
 
+app.use(
+  "/Documents",
+  express.static("/media/acc_inc/B/SMS/Documents")
+);
+
 //server creation and listening 
 const port=process.env.PORT
 
