@@ -3191,7 +3191,9 @@ class userController {
 
     const ProfileData = await database
       .collection(forProf + "_PROFILE")
-      .findOne({ EnrolmentNumber: data.EnrolmentNumber });
+      .findOne({ EnrolmentNumber: data.EnrolmentNumber,
+        PDF: "PDF",
+       });
 
     const newData = {
       ...data,
