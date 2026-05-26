@@ -1702,6 +1702,39 @@ class userController {
     }
   };
 
+//=========================================
+//========NEP UNITS======================
+//=========================================
+
+  static getNEPUnits = async (req, res) => {
+    const myobj = req.body;
+    // console.log("Data from front", myobj)
+
+    const client = new MongoClient(URL);
+
+    try {
+      await client.connect();
+      const data = await client
+        .db("NepUG")
+        .collection(myobj.sem.toString().slice(0, 3) + "_PROFILE")
+        .distinct("Unit", { Session: myobj.session })
+      res.send({
+        status: "success",
+        message: "NEP Units",
+        data: data,
+      });
+    } catch (error) {
+      console.error("Error fetching NEPUNIT:", error);
+      res.status(500).send({
+        status: "error",
+        message: "Failed to fetch data",
+      });
+    } finally {
+      // await client.close();
+    }
+  }
+
+
   //============
   // Upload of Marks / Skill
   //============
@@ -4937,6 +4970,64 @@ class userController {
       });
     }
   };
+
+
+static getAttendanceNep = async (req, res) => {
+  const myobj = req.body;
+
+  console.log("first",myobj)
+  const client = new MongoClient(URL);
+  await client.connect();
+
+  //=================
+  //== PROFILE DATA =
+  //=================
+
+const ProfileData = await client
+  .db("NepUG")
+  .collection(myobj.sem.toString().slice(0, 3) + "_PROFILE")
+  .find({ Session: myobj.session, PDF: "PDF", Candidature: "Active" })
+  .toArray();
+
+  const RollData = await client
+    .db("NepUG")
+    .collection(myobj.sem + "_RESULT")
+    .find(
+      { PDF: "PDF" },
+      {
+        projection: {
+          _id: 0,
+          EnrolmentNumber: 1,
+          RollNumber: 1,
+        },
+      },
+    )
+    .toArray();
+
+    const FinalData = ProfileData.map((profile) => {
+      const rollInfo = RollData.find(
+        (roll) => roll.EnrolmentNumber === profile.EnrolmentNumber,
+      );
+
+      return {
+        EnrolmentNumber: profile.EnrolmentNumber,
+        RollNumber: rollInfo ? rollInfo.RollNumber : "N/A",
+        Name: profile.Name,
+        FatherName: profile.FatherName,
+        MotherName: profile.MotherName,
+        ABCIdNumber: profile.ABCIdNumber,
+        Candidature: profile.Candidature,
+        Session: profile.Session,
+      };
+    });
+
+    // console.log("Final Data", FinalData);
+  
+ 
+  res.send({ message: "Attendance API is working fine"});
+}
+
+
 }
 
 export default userController;

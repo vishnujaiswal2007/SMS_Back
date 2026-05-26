@@ -22,6 +22,9 @@ router.use('/modifyMarks', checkUserAuth)
 router.use('/subjectModify', checkUserAuth)
 router.use('/getProfile', checkUserAuth)
 router.use('/updateProfile', checkUserAuth)
+router.use('/getAttendanceNep', checkUserAuth)
+router.use('/getNepUnits', checkUserAuth)
+
 
 
 
@@ -42,6 +45,7 @@ router.post(`/getAllDiscipline`, userController.getAllDescipline)
 router.post('/makeTranscript', userController.makeTranscript)
 
 
+
 //Private Routers
 router.post('/chngpas', userController.changepassword)
 router.post('/getverify', userController.getVerify)
@@ -56,7 +60,6 @@ router.post('/modifyMarks', userController.ModifyNepMarks)
 router.use('/subjectModify', userController.SubjectModify)
 router.post('/getProfile', userController.getProfile)
 router.post('/updateProfile', upload.fields([{ name: 'Candidature', maxCount: 1 }]), userController.updateProfile)
-
-
-
+router.post('/getAttendanceNep', userController.getAttendanceNep)
+router.post('/getNepUnits', userController.getNEPUnits) 
 export default router
