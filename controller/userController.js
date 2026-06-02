@@ -4975,7 +4975,7 @@ class userController {
 static getAttendanceNep = async (req, res) => {
   const myobj = req.body;
 
-  console.log("first",myobj)
+  // console.log("first",myobj)
   const client = new MongoClient(URL);
   await client.connect();
 
@@ -4986,7 +4986,7 @@ static getAttendanceNep = async (req, res) => {
 const ProfileData = await client
   .db("NepUG")
   .collection(myobj.sem.toString().slice(0, 3) + "_PROFILE")
-  .find({ Session: myobj.session, PDF: "PDF", Candidature: "Active" })
+  .find({ Session: myobj.session, PDF: "PDF", Candidature: "Active", Unit:myobj.unit })
   .toArray();
 
   const RollData = await client
@@ -4999,6 +4999,10 @@ const ProfileData = await client
           _id: 0,
           EnrolmentNumber: 1,
           RollNumber: 1,
+          MajorDiscipline1:1,
+          MajorDiscipline2:1,
+          ...(myobj.PRG==="PRE008" && {MajorDiscipline3:1}),
+          MinorDiscipline:1
         },
       },
     )
@@ -5009,22 +5013,35 @@ const ProfileData = await client
         (roll) => roll.EnrolmentNumber === profile.EnrolmentNumber,
       );
 
+   
+
       return {
+        PRG_CODE: profile.PRG_CODE,
+        ProgrameName: profile.ProgrameName,
+        YearOfAdmission: profile.YearOfAdmission,
         EnrolmentNumber: profile.EnrolmentNumber,
-        RollNumber: rollInfo ? rollInfo.RollNumber : "N/A",
+        RollNumber: rollInfo ? rollInfo.RollNumber : "NA",
         Name: profile.Name,
         FatherName: profile.FatherName,
         MotherName: profile.MotherName,
         ABCIdNumber: profile.ABCIdNumber,
         Candidature: profile.Candidature,
         Session: profile.Session,
+        Unit: profile.Unit,
+        Major1: rollInfo.MajorDiscipline1,
+        Major2: rollInfo.MajorDiscipline2,
+        ...(myobj.PRG === "PRE008" && {Major3: rollInfo?.MajorDiscipline3 ?? "NA"}),
+        Minor: rollInfo.MinorDiscipline
       };
     });
 
     // console.log("Final Data", FinalData);
   
  
-  res.send({ message: "Attendance API is working fine"});
+  res.send({ 
+    message: "Attendance API is working fine",
+    FinalData
+  });
 }
 
 
