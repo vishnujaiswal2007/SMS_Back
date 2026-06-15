@@ -24,6 +24,7 @@ router.use('/getProfile', checkUserAuth)
 router.use('/updateProfile', checkUserAuth)
 router.use('/getAttendanceNep', checkUserAuth)
 router.use('/getNepUnits', checkUserAuth)
+router.use('/marksheetNEP', checkUserAuth)
 
 
 
@@ -62,4 +63,5 @@ router.post('/getProfile', userController.getProfile)
 router.post('/updateProfile', upload.fields([{ name: 'Candidature', maxCount: 1 }]), userController.updateProfile)
 router.post('/getAttendanceNep', userController.getAttendanceNep)
 router.post('/getNepUnits', userController.getNEPUnits) 
+router.post('/marksheetNEP', userController.getNepMarksheet)
 export default router

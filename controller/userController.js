@@ -5045,6 +5045,77 @@ const ProfileData = await client
 }
 
 
+static getNepMarksheet = async (req, res) => {
+  const myobj = req.body;
+
+  // console.log("first",myobj.rollno)
+  const client = new MongoClient(URL);
+  await client.connect();
+
+  //================================
+  // Criteria: All/Range/RollNumber
+  //================================
+
+
+  //=================
+  //== RESULT DATA =
+  //================= 
+
+let query = { PDF: "PDF" };
+
+ if(myobj.allcustom === "range"){
+   query.RollNumber = { $gte: Number(myobj.RN1), $lte: Number(myobj.RN2) };
+}else if(myobj.allcustom === "rollno"){
+    query.RollNumber = Number(myobj.rollno);
+} 
+
+const RollData = await client
+    .db("NepUG")
+    .collection(myobj.sem + "_RESULT")
+    .find(query,{projection: {
+      _id: 0
+    }})
+    .toArray();
+
+
+    // console.log("Roll Data is ", RollData)
+
+  //=================
+  //== PROFILE DATA =
+  //=================
+
+const ProfileData = await client
+  .db("NepUG")
+  .collection(myobj.sem.toString().slice(0, 3) + "_PROFILE")
+  .find({ Session: myobj.session, PDF: "PDF", Candidature: "Active" },{projection: {_id: 0}} )
+  .toArray();
+
+
+  let FinalData = [];
+
+  if(RollData.length > 0){
+    RollData.map((roll) => {
+      const profileInfo = ProfileData.find(
+        (profile) => profile.EnrolmentNumber === roll.EnrolmentNumber,
+      );
+
+      FinalData.push({...roll, ...profileInfo});
+    })
+  }
+
+  // console.log("Final Data for marksheet", FinalData)
+
+
+
+  
+  res.status(200).json({
+    status: "success",
+    message: "Nep Marksheet API is working fine",
+    data: FinalData
+  })
+}
+
+
 }
 
 export default userController;
