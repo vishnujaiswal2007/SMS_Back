@@ -850,6 +850,7 @@ class userController {
             .find({
               CBCS_CATEGORY: "MAJOR",
               DISCIPLINE: disciplineMajor1Details?.DISCIPLINE,
+              Semester: "I",
             })
             .toArray();
 
@@ -860,6 +861,7 @@ class userController {
             .find({
               CBCS_CATEGORY: "MAJOR",
               DISCIPLINE: disciplineMajor2Details?.DISCIPLINE,
+              Semester: "I",
             })
             .toArray();
 
@@ -870,6 +872,7 @@ class userController {
             .find({
               CBCS_CATEGORY: "MAJOR",
               DISCIPLINE: disciplineMajor3Details?.DISCIPLINE,
+              Semester: "I",
             })
             .toArray();
 
@@ -878,6 +881,7 @@ class userController {
             .findOne({
               CBCS_CATEGORY: "MINOR",
               DISCIPLINE: disciplineMinorDetails?.DISCIPLINE,
+              Semester: "I",
             });
 
           program = await CoursesDB.collection("COURSES").findOne({
@@ -1206,6 +1210,7 @@ class userController {
             .find({
               CBCS_CATEGORY: "MAJOR",
               String_Code: disciplineMajor1?.String_Code,
+              Semester: "I",
             })
             .toArray();
 
@@ -1222,6 +1227,7 @@ class userController {
             .find({
               CBCS_CATEGORY: "MAJOR",
               String_Code: disciplineMajor2?.String_Code,
+              Semester: "I",
             })
             .toArray();
 
@@ -1238,6 +1244,7 @@ class userController {
             .find({
               CBCS_CATEGORY: "MINOR",
               String_Code: disciplineMinor?.String_Code,
+              Semester: "I",
             })
             .toArray();
 
@@ -1702,9 +1709,9 @@ class userController {
     }
   };
 
-//=========================================
-//========NEP UNITS======================
-//=========================================
+  //=========================================
+  //========NEP UNITS======================
+  //=========================================
 
   static getNEPUnits = async (req, res) => {
     const myobj = req.body;
@@ -1717,7 +1724,7 @@ class userController {
       const data = await client
         .db("NepUG")
         .collection(myobj.sem.toString().slice(0, 3) + "_PROFILE")
-        .distinct("Unit", { Session: myobj.session })
+        .distinct("Unit", { Session: myobj.session });
       res.send({
         status: "success",
         message: "NEP Units",
@@ -1732,14 +1739,15 @@ class userController {
     } finally {
       // await client.close();
     }
-  }
-
+  };
 
   //============
   // Upload of Marks / Skill
   //============
 
   static UploadMarks = async (req, res) => {
+    const myobj = req.body;
+
     if (!req.file) {
       return res.status(400).send({
         status: "Fail",
@@ -1927,7 +1935,7 @@ class userController {
 
         const discipline = await nepDB
           .collection("DiciplineDetails")
-          .findOne({ Number_Code: parseInt(dt.sb) });
+          .findOne({ Number_Code: parseInt(dt.sb), Semester: myobj.sem });
 
         if (!discipline) {
           report.Reason = "Discipline not found";
@@ -2734,6 +2742,8 @@ class userController {
             TotalCpsObtained: total([Cps1, Cps2, CpsMi]),
             TotalCi: total([Ci1, Ci2, CiMi]),
             TotalSgpa: Sgpa,
+            TotalGeadeObtained: getGrade(Number(Sgpa * 10))?.letterGrade ?? "",
+            TotalGradePoints: getGrade(Number(Sgpa * 10))?.gradePoint ?? "",
             Remarks: "GRADING SYSTEM @40%",
             PDF: "PDF",
             RD: "MF001",
@@ -3134,6 +3144,8 @@ class userController {
             TotalCpsObtained: total([Cps1, Cps2, Cps3, CpsMi]),
             TotalCi: total([Ci1, Ci2, Ci3, CiMi]),
             TotalSgpa: Sgpa,
+            TotalGeadeObtained: getGrade(Number(Sgpa * 10))?.letterGrade ?? "",
+            TotalGradePoints: getGrade(Number(Sgpa * 10))?.gradePoint ?? "",
             PDF: "PDF",
             RD: "MF001",
             DOR: aaj(),
@@ -3224,9 +3236,7 @@ class userController {
 
     const ProfileData = await database
       .collection(forProf + "_PROFILE")
-      .findOne({ EnrolmentNumber: data.EnrolmentNumber,
-        PDF: "PDF",
-       });
+      .findOne({ EnrolmentNumber: data.EnrolmentNumber, PDF: "PDF" });
 
     const newData = {
       ...data,
@@ -3798,6 +3808,8 @@ class userController {
             TotalCpsObtained: total([Cps1, Cps2, CpsMi]),
             TotalCi: total([Ci1, Ci2, CiMi]),
             TotalSgpa: Sgpa,
+            TotalGeadeObtained: getGrade(Number(Sgpa * 10))?.letterGrade ?? "",
+            TotalGradePoints: getGrade(Number(Sgpa * 10))?.gradePoint ?? "",
             Remarks: "GRADING SYSTEM @40%",
             PDF: "PDF",
             RD: roundData(s.RD),
@@ -4282,6 +4294,8 @@ class userController {
             TotalCpsObtained: total([Cps1, Cps2, Cps3, CpsMi]),
             TotalCi: total([Ci1, Ci2, Ci3, CiMi]),
             TotalSgpa: Sgpa,
+            TotalGeadeObtained: getGrade(Number(Sgpa * 10))?.letterGrade ?? "",
+            TotalGradePoints: getGrade(Number(Sgpa * 10))?.gradePoint ?? "",
             PDF: "PDF",
             RD: roundData(s.RD),
             DOR: s.DOR,
@@ -4821,7 +4835,6 @@ class userController {
     }
 
     // console.log("Profile of Candidate is ", StudentProfile);
-    
 
     return res.status(200).json({
       status: "success",
@@ -4830,111 +4843,503 @@ class userController {
     });
   };
 
-  static updateProfile = async (req, res) => {
-    // -----------------------------
-    // BASIC DATE INFO
-    // -----------------------------
-    const date = new Date();
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    const documentDate = `${day}_${month}_${year}`;
-    const createdDate = `${day}/${month}/${year}`;
+  // static updateProfile = async (req, res) => {
+  //   // -----------------------------
+  //   // BASIC DATE INFO
+  //   // -----------------------------
+  //   const date = new Date();
+  //   const day = String(date.getDate()).padStart(2, "0");
+  //   const month = String(date.getMonth() + 1).padStart(2, "0");
+  //   const year = date.getFullYear();
+  //   const documentDate = `${day}_${month}_${year}`;
+  //   const createdDate = `${day}/${month}/${year}`;
 
-    // STRING → OBJECT
+  //   // STRING → OBJECT
 
-    const candidate = JSON.parse(req.body.candidate);
+  //   const candidate = JSON.parse(req.body.candidate);
+
+  //   delete candidate._id;
+
+  //   Object.keys(candidate).forEach((key) => {
+  //     if (key.startsWith("RN")) {
+  //       delete candidate[key];
+  //     }
+  //   });
+
+  //   try {
+  //     const labelMap = {
+  //       PRE006: "BAN",
+  //       PRE007: "BSN",
+  //       PRE008: "BCN",
+  //     };
+
+  //     if (
+  //       req.files &&
+  //       req.files.Candidature &&
+  //       req.files.Candidature.length > 0
+  //     ) {
+  //       const file = req.files.Candidature[0];
+
+  //       // =====================================
+  //       // CUSTOM FOLDER
+  //       // =====================================
+
+  //       const folderPath = path.join(
+  //         "/media/acc_inc/B/SMS/Documents",
+  //         candidate.EnrolmentNumber,
+  //         "Candidature",
+  //       );
+
+  //       // =====================================
+  //       // CREATE FOLDER IF NOT EXISTS
+  //       // =====================================
+
+  //       fs.mkdirSync(folderPath, {
+  //         recursive: true,
+  //       });
+
+  //       // =====================================
+  //       // FILE EXTENSION
+  //       // =====================================
+
+  //       const ext = path.extname(file.originalname);
+
+  //       // =====================================
+  //       // CUSTOM FILE NAME
+  //       // =====================================
+
+  //       const fileName = `Dated_${documentDate}${ext}`;
+
+  //       // =====================================
+  //       // FINAL ABSOLUTE PATH
+  //       // =====================================
+
+  //       const finalPath = path.join(folderPath, fileName);
+
+  //       // =====================================
+  //       // SAVE FILE
+  //       // =====================================
+
+  //       fs.writeFileSync(finalPath, file.buffer);
+
+  //       // =====================================
+  //       // SAVE RELATIVE PATH IN DATABASE
+  //       // =====================================
+
+  //       candidate.CandidatureDocument = path
+  //         .join(
+  //           "/Documents",
+  //           candidate.EnrolmentNumber,
+  //           "Candidature",
+  //           fileName,
+  //         )
+  //         .replace(/\\/g, "/");
+  //     }
+
+  //     const client = new MongoClient(URL);
+
+  //     await client.connect();
+
+  //     const database = client.db("NepUG");
+
+  //     const collection = database.collection(
+  //       labelMap[candidate.PRG_CODE] + "_PROFILE",
+  //     );
+
+  //     // =====================================
+  //     // OLD RECORD INACTIVE
+  //     // =====================================
+
+  //     await collection.updateOne(
+  //       {
+  //         EnrolmentNumber: candidate.EnrolmentNumber,
+  //         PDF: "PDF",
+  //       },
+
+  //       {
+  //         $set: {
+  //           PDF: "---",
+  //         },
+  //       },
+  //     );
+
+  //     // =====================================
+  //     // NEW RECORD SAVE
+  //     // =====================================
+
+  //     candidate.PDF = "PDF";
+
+  //     candidate.DateOfModification = createdDate;
+
+  //     await collection.insertOne(candidate);
+
+  //     // =====================================
+
+  //     res.send({
+  //       status: "success",
+  //       message: "Profile Updated Successfully",
+  //     });
+  //   } catch (error) {
+  //     console.log(error);
+
+  //     res.status(500).send({
+  //       status: "failed",
+  //       message: "Internal Server Error",
+  //     });
+  //   }
+  // };
+
+
+
+
+// ============================================================
+// CONTROLLER
+// ============================================================
+
+static updateProfile = async (req, res) => {
+
+  // ==========================================================
+  // BASIC DATE INFO
+  // ==========================================================
+
+  const date = new Date();
+
+  const day = String(
+    date.getDate()
+  ).padStart(2, "0");
+
+  const month = String(
+    date.getMonth() + 1
+  ).padStart(2, "0");
+
+  const year = date.getFullYear();
+
+  const documentDate =
+    `${day}_${month}_${year}`;
+
+  const createdDate =
+    `${day}/${month}/${year}`;
+
+  const timeStamp =
+    `${date.getHours()}_${date.getMinutes()}_${date.getSeconds()}_${date.getMilliseconds()}`;
+
+  try {
+
+    // ========================================================
+    // STRING -> OBJECT
+    // ========================================================
+
+    const candidate =
+      JSON.parse(req.body.candidate);
 
     delete candidate._id;
 
-    Object.keys(candidate).forEach((key) => {
-      if (key.startsWith("RN")) {
-        delete candidate[key];
+    Object.keys(candidate).forEach(
+      (key) => {
+
+        if (key.startsWith("RN")) {
+          delete candidate[key];
+        }
+
       }
-    });
+    );
 
-    try {
-      const labelMap = {
-        PRE006: "BAN",
-        PRE007: "BSN",
-        PRE008: "BCN",
-      };
+    // ========================================================
+    // PROGRAM LABEL
+    // ========================================================
 
-     if (
-       req.files &&
-       req.files.Candidature &&
-       req.files.Candidature.length > 0
-     ) {
-       const file = req.files.Candidature[0];
+    const labelMap = {
 
-       // =====================================
-       // CUSTOM FOLDER
-       // =====================================
+      PRE006: "BAN",
+      PRE007: "BSN",
+      PRE008: "BCN",
 
-       const folderPath = path.join(
-         "/media/acc_inc/B/SMS/Documents",
-         candidate.EnrolmentNumber,
-         "Candidature",
-       );
+    };
 
-       // =====================================
-       // CREATE FOLDER IF NOT EXISTS
-       // =====================================
+    // ========================================================
+    // PHOTO
+    // ========================================================
 
-       fs.mkdirSync(folderPath, {
-         recursive: true,
-       });
+    if (
+      req.files &&
+      req.files.photo &&
+      req.files.photo.length > 0
+    ) {
 
-       // =====================================
-       // FILE EXTENSION
-       // =====================================
+      const file =
+        req.files.photo[0];
 
-       const ext = path.extname(file.originalname);
+      // ----------------------------------------
+      // PHOTO FOLDER
+      // ----------------------------------------
 
-       // =====================================
-       // CUSTOM FILE NAME
-       // =====================================
+      const photoFolder =
+        path.join(
+          "/media/acc_inc/B/SMS/Photo",
 
-       const fileName = `Dated_${documentDate}${ext}`;
+          String(
+            candidate.ProgrameName
+          ),
 
-       // =====================================
-       // FINAL ABSOLUTE PATH
-       // =====================================
+          String(
+            candidate.YearOfAdmission
+          )
+        );
 
-       const finalPath = path.join(folderPath, fileName);
-
-       // =====================================
-       // SAVE FILE
-       // =====================================
-
-       fs.writeFileSync(finalPath, file.buffer);
-
-       // =====================================
-       // SAVE RELATIVE PATH IN DATABASE
-       // =====================================
-
-       candidate.CandidatureDocument = path
-         .join("/Documents", candidate.EnrolmentNumber, "Candidature", fileName)
-         .replace(/\\/g, "/");
-     }
-
-      const client = new MongoClient(URL);
-
-      await client.connect();
-
-      const database = client.db("NepUG");
-
-      const collection = database.collection(
-        labelMap[candidate.PRG_CODE] + "_PROFILE",
+      fs.mkdirSync(
+        photoFolder,
+        {
+          recursive: true,
+        }
       );
 
-      // =====================================
+      // ----------------------------------------
+      // FIXED PHOTO NAME
+      // ----------------------------------------
+
+      const photoFileName =
+        candidate.EnrolmentNumber
+          .toUpperCase() +
+        ".jpg";
+
+      const finalPhotoPath =
+        path.join(
+          photoFolder,
+          photoFileName
+        );
+
+      // ----------------------------------------
+      // SAVE PHOTO
+      // ----------------------------------------
+
+      fs.writeFileSync(
+        finalPhotoPath,
+        file.buffer
+      );
+    }
+
+    // ========================================================
+    // PHOTO SUPPORTING DOCUMENT
+    // ========================================================
+    //
+    // IMPORTANT:
+    //
+    // This is completely separate from
+    // CandidatureDocument.
+    //
+    // Frontend field:
+    //
+    // PhotoSupportingDocument
+    //
+    // MongoDB field:
+    //
+    // candidate.PhotoSupportingDocument
+    //
+    // ========================================================
+
+    if (
+      req.files &&
+      req.files.PhotoSupportingDocument &&
+      req.files.PhotoSupportingDocument.length > 0
+    ) {
+
+      const file =
+        req.files.PhotoSupportingDocument[0];
+
+      // ----------------------------------------
+      // PHOTO DOCUMENT FOLDER
+      // ----------------------------------------
+
+      const folderPath =
+        path.join(
+          "/media/acc_inc/B/SMS/Documents",
+
+          candidate.EnrolmentNumber,
+
+          "PhotoChange"
+        );
+
+      fs.mkdirSync(
+        folderPath,
+        {
+          recursive: true,
+        }
+      );
+
+      // ----------------------------------------
+      // ORIGINAL EXTENSION
+      // ----------------------------------------
+
+      const ext =
+        path.extname(
+          file.originalname
+        ).toLowerCase();
+
+      // ----------------------------------------
+      // UNIQUE FILE NAME
+      // ----------------------------------------
+
+      const fileName =
+        `PhotoChange_${documentDate}_${timeStamp}${ext}`;
+
+      const finalPath =
+        path.join(
+          folderPath,
+          fileName
+        );
+
+      // ----------------------------------------
+      // SAVE
+      // ----------------------------------------
+
+      fs.writeFileSync(
+        finalPath,
+        file.buffer
+      );
+
+      // ----------------------------------------
+      // MONGODB FIELD
+      // ----------------------------------------
+
+      candidate.PhotoSupportingDocument =
+        path
+          .join(
+            "/Documents",
+            candidate.EnrolmentNumber,
+            "PhotoChange",
+            fileName
+          )
+          .replace(
+            /\\/g,
+            "/"
+          );
+    }
+
+    // ========================================================
+    // CANDIDATURE STATUS DOCUMENT
+    // ========================================================
+    //
+    // This remains completely separate.
+    //
+    // Frontend field:
+    //
+    // Candidature
+    //
+    // MongoDB field:
+    //
+    // CandidatureDocument
+    //
+    // ========================================================
+
+    if (
+      req.files &&
+      req.files.Candidature &&
+      req.files.Candidature.length > 0
+    ) {
+
+      const file =
+        req.files.Candidature[0];
+
+      // ----------------------------------------
+      // CANDIDATURE FOLDER
+      // ----------------------------------------
+
+      const folderPath =
+        path.join(
+          "/media/acc_inc/B/SMS/Documents",
+
+          candidate.EnrolmentNumber,
+
+          "Candidature"
+        );
+
+      fs.mkdirSync(
+        folderPath,
+        {
+          recursive: true,
+        }
+      );
+
+      // ----------------------------------------
+      // ORIGINAL EXTENSION
+      // ----------------------------------------
+
+      const ext =
+        path.extname(
+          file.originalname
+        ).toLowerCase();
+
+      // ----------------------------------------
+      // UNIQUE FILE NAME
+      // ----------------------------------------
+
+      const fileName =
+        `Candidature_${documentDate}_${timeStamp}${ext}`;
+
+      const finalPath =
+        path.join(
+          folderPath,
+          fileName
+        );
+
+      // ----------------------------------------
+      // SAVE
+      // ----------------------------------------
+
+      fs.writeFileSync(
+        finalPath,
+        file.buffer
+      );
+
+      // ----------------------------------------
+      // MONGODB FIELD
+      // ----------------------------------------
+
+      candidate.CandidatureDocument =
+        path
+          .join(
+            "/Documents",
+            candidate.EnrolmentNumber,
+            "Candidature",
+            fileName
+          )
+          .replace(
+            /\\/g,
+            "/"
+          );
+    }
+
+    // ========================================================
+    // MONGODB
+    // ========================================================
+
+    const client =
+      new MongoClient(URL);
+
+    await client.connect();
+
+    try {
+
+      const database =
+        client.db("NepUG");
+
+      const collection =
+        database.collection(
+          labelMap[
+            candidate.PRG_CODE
+          ] + "_PROFILE"
+        );
+
+      // ======================================================
       // OLD RECORD INACTIVE
-      // =====================================
+      // ======================================================
 
       await collection.updateOne(
+
         {
-          EnrolmentNumber: candidate.EnrolmentNumber,
+          EnrolmentNumber:
+            candidate.EnrolmentNumber,
+
           PDF: "PDF",
         },
 
@@ -4942,78 +5347,113 @@ class userController {
           $set: {
             PDF: "---",
           },
-        },
+        }
+
       );
 
-      // =====================================
-      // NEW RECORD SAVE
-      // =====================================
+      // ======================================================
+      // NEW RECORD
+      // ======================================================
 
       candidate.PDF = "PDF";
 
-      candidate.DateOfModification = createdDate;
+      candidate.DateOfModification =
+        createdDate;
 
-      await collection.insertOne(candidate);
+      // ======================================================
+      // INSERT NEW RECORD
+      // ======================================================
 
-      // =====================================
+      await collection.insertOne(
+        candidate
+      );
 
-      res.send({
-        status: "success",
-        message: "Profile Updated Successfully",
-      });
-    } catch (error) {
-      console.log(error);
+    } finally {
 
-      res.status(500).send({
-        status: "failed",
-        message: "Internal Server Error",
-      });
+      await client.close();
+
     }
-  };
+
+    // ========================================================
+    // SUCCESS
+    // ========================================================
+
+    res.send({
+
+      status: "success",
+
+      message:
+        "Profile Updated Successfully",
+
+    });
+
+  } catch (error) {
+
+    console.error(
+      "updateProfile error:",
+      error
+    );
+
+    res.status(500).send({
+
+      status: "failed",
+
+      message:
+        error.message ||
+        "Internal Server Error",
+
+    });
+  }
+};
 
 
-static getAttendanceNep = async (req, res) => {
-  const myobj = req.body;
 
-  // console.log("first",myobj)
-  const client = new MongoClient(URL);
-  await client.connect();
 
-  //=================
-  //== PROFILE DATA =
-  //=================
+  static getAttendanceNep = async (req, res) => {
+    const myobj = req.body;
 
-const ProfileData = await client
-  .db("NepUG")
-  .collection(myobj.sem.toString().slice(0, 3) + "_PROFILE")
-  .find({ Session: myobj.session, PDF: "PDF", Candidature: "Active", Unit:myobj.unit })
-  .toArray();
+    // console.log("first",myobj)
+    const client = new MongoClient(URL);
+    await client.connect();
 
-  const RollData = await client
-    .db("NepUG")
-    .collection(myobj.sem + "_RESULT")
-    .find(
-      { PDF: "PDF" },
-      {
-        projection: {
-          _id: 0,
-          EnrolmentNumber: 1,
-          RollNumber: 1,
-          MajorDiscipline1:1,
-          MajorDiscipline2:1,
-          ...(myobj.PRG==="PRE008" && {MajorDiscipline3:1}),
-          MinorDiscipline:1
+    //=================
+    //== PROFILE DATA =
+    //=================
+
+    const ProfileData = await client
+      .db("NepUG")
+      .collection(myobj.sem.toString().slice(0, 3) + "_PROFILE")
+      .find({
+        Session: myobj.session,
+        PDF: "PDF",
+        Candidature: "Active",
+        Unit: myobj.unit,
+      })
+      .toArray();
+
+    const RollData = await client
+      .db("NepUG")
+      .collection(myobj.sem + "_RESULT")
+      .find(
+        { PDF: "PDF" },
+        {
+          projection: {
+            _id: 0,
+            EnrolmentNumber: 1,
+            RollNumber: 1,
+            MajorDiscipline1: 1,
+            MajorDiscipline2: 1,
+            ...(myobj.PRG === "PRE008" && { MajorDiscipline3: 1 }),
+            MinorDiscipline: 1,
+          },
         },
-      },
-    )
-    .toArray();
+      )
+      .toArray();
 
     const FinalData = ProfileData.map((profile) => {
       const rollInfo = RollData.find(
         (roll) => roll.EnrolmentNumber === profile.EnrolmentNumber,
       );
-
-   
 
       return {
         PRG_CODE: profile.PRG_CODE,
@@ -5030,92 +5470,469 @@ const ProfileData = await client
         Unit: profile.Unit,
         Major1: rollInfo.MajorDiscipline1,
         Major2: rollInfo.MajorDiscipline2,
-        ...(myobj.PRG === "PRE008" && {Major3: rollInfo?.MajorDiscipline3 ?? "NA"}),
-        Minor: rollInfo.MinorDiscipline
+        ...(myobj.PRG === "PRE008" && {
+          Major3: rollInfo?.MajorDiscipline3 ?? "NA",
+        }),
+        Minor: rollInfo.MinorDiscipline,
       };
     });
 
     // console.log("Final Data", FinalData);
-  
- 
-  res.send({ 
-    message: "Attendance API is working fine",
-    FinalData
-  });
-}
 
+    res.send({
+      message: "Attendance API is working fine",
+      FinalData,
+    });
+  };
 
-static getNepMarksheet = async (req, res) => {
-  const myobj = req.body;
+  static getNepMarksheet = async (req, res) => {
+    const myobj = req.body;
 
-  // console.log("first",myobj.rollno)
-  const client = new MongoClient(URL);
-  await client.connect();
+    // console.log("first",myobj.rollno)
+    const client = new MongoClient(URL);
+    await client.connect();
 
-  //================================
-  // Criteria: All/Range/RollNumber
-  //================================
+    //================================
+    // Criteria: All/Range/RollNumber
+    //================================
 
+    //=================
+    //== RESULT DATA =
+    //=================
 
-  //=================
-  //== RESULT DATA =
-  //================= 
+    let query = { PDF: "PDF" };
 
-let query = { PDF: "PDF" };
+    if (myobj.allcustom === "range") {
+      query.RollNumber = { $gte: Number(myobj.RN1), $lte: Number(myobj.RN2) };
+    } else if (myobj.allcustom === "rollno") {
+      query.RollNumber = Number(myobj.rollno);
+    }
 
- if(myobj.allcustom === "range"){
-   query.RollNumber = { $gte: Number(myobj.RN1), $lte: Number(myobj.RN2) };
-}else if(myobj.allcustom === "rollno"){
-    query.RollNumber = Number(myobj.rollno);
-} 
-
-const RollData = await client
-    .db("NepUG")
-    .collection(myobj.sem + "_RESULT")
-    .find(query,{projection: {
-      _id: 0
-    }})
-    .toArray();
-
+    const RollData = await client
+      .db("NepUG")
+      .collection(myobj.sem + "_RESULT")
+      .find(query, {
+        projection: {
+          _id: 0,
+        },
+      })
+      .toArray();
 
     // console.log("Roll Data is ", RollData)
 
-  //=================
-  //== PROFILE DATA =
-  //=================
+    //=================
+    //== PROFILE DATA =
+    //=================
 
-const ProfileData = await client
-  .db("NepUG")
-  .collection(myobj.sem.toString().slice(0, 3) + "_PROFILE")
-  .find({ Session: myobj.session, PDF: "PDF", Candidature: "Active" },{projection: {_id: 0}} )
-  .toArray();
+    const ProfileData = await client
+      .db("NepUG")
+      .collection(myobj.sem.toString().slice(0, 3) + "_PROFILE")
+      .find(
+        { Session: myobj.session, PDF: "PDF", Candidature: "Active" },
+        { projection: { _id: 0 } },
+      )
+      .toArray();
 
+    let FinalData = [];
 
-  let FinalData = [];
+    if (RollData.length > 0) {
+      RollData.map((roll) => {
+        const profileInfo = ProfileData.find(
+          (profile) => profile.EnrolmentNumber === roll.EnrolmentNumber,
+        );
 
-  if(RollData.length > 0){
-    RollData.map((roll) => {
-      const profileInfo = ProfileData.find(
-        (profile) => profile.EnrolmentNumber === roll.EnrolmentNumber,
+        FinalData.push({ ...roll, ...profileInfo });
+      });
+    }
+
+    // console.log("Final Data for marksheet", FinalData)
+
+    res.status(200).json({
+      status: "success",
+      message: "Nep Marksheet API is working fine",
+      data: FinalData,
+    });
+  };
+
+  static RegisteredStudentNEP = async (req, res) => {
+    const { SEM, ...rest } = req.body;
+
+    const myobj = { ...rest, ...JSON.parse(SEM) };
+
+    const DbclCode = myobj.DB_CL.replace(/\d+$/, "_PROFILE");
+
+    const client = new MongoClient(URL);
+    await client.connect();
+
+    const CoursesDB = client.db("COURSES");
+    const CodeDB = client.db("CODE");
+    const discipline = client.db("NEP");
+    const paper = client.db("NEP");
+
+    // -----------------------------
+    // BASIC DATE INFO
+    // -----------------------------
+    const date = new Date();
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    const formattedDate = `${day}/${month}/${year}`;
+    // const lastOfYear = String(year).slice(2);
+    // const nextofYear = parseInt(lastOfYear) + 1;
+
+    const PRG_CODE = myobj.PRG;
+
+    // -----------------------------
+    // READ EXCEL
+    // -----------------------------
+    const fileBuffer = req.file.buffer;
+    const workbook = XLSX.read(fileBuffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const data = XLSX.utils.sheet_to_json(sheet);
+
+    let wrongRows = [];
+    let recordsToInsert = [];
+
+    // -----------------------------
+    // PROCESS EACH ROW
+    // -----------------------------
+    let program;
+
+    const isPre008 = myobj.PRG === "PRE008"; // Check if the program is PRE008
+
+    // -----------------------------
+    // FOR BA/BSC/BCOM
+    // -----------------------------
+
+    for (const row of data) {
+      //--------------
+      //Discipline
+      //-----------
+      const disciplineMajor1 = await discipline
+        .collection("Discipline")
+        .findOne({ Number_Code: row.sb11, Semester: myobj.sem });
+      const disciplineMajor2 = await discipline
+        .collection("Discipline")
+        .findOne({ Number_Code: row.sb12, Semester: myobj.sem });
+      const disciplineMinor = await discipline
+        .collection("Discipline")
+        .findOne({ Number_Code: row.sb13, Semester: myobj.sem });
+
+      //-------------------
+      //Discipline Paper marks details
+      //--------------------
+      const disciplineMajor1Details = await discipline
+        .collection("DiciplineDetails")
+        .findOne({
+          DISCIPLINE: disciplineMajor1?.DISCIPLINE,
+          Semester: myobj.sem,
+        });
+      const disciplineMajor2Details = await discipline
+        .collection("DiciplineDetails")
+        .findOne({
+          DISCIPLINE: disciplineMajor2?.DISCIPLINE,
+          Semester: myobj.sem,
+        });
+      const disciplineMinorDetails = await discipline
+        .collection("DiciplineDetails")
+        .findOne({
+          DISCIPLINE: disciplineMinor?.DISCIPLINE,
+          Semester: myobj.sem,
+        });
+
+      //-------------
+      //Major and Minor Papers of Major Minor Discipline
+      //-----------
+
+      const MajorDiscipline1 = await paper
+        .collection("PaperDetails")
+        .find({
+          CBCS_CATEGORY: "MAJOR",
+          String_Code: disciplineMajor1?.String_Code,
+          Semester: myobj.sem,
+        })
+        .toArray();
+
+      const paperMajorDiscipline1 =
+        MajorDiscipline1?.filter((p) => {
+          return p?.TYPE === "THEORY" && p?.COURSE_NAME !== "CIA";
+        }) ?? [];
+
+      const PracticalMajorDiscipline1 =
+        MajorDiscipline1.filter((p) => p?.TYPE === "PRACTICAL") ?? [];
+
+      const MajorDiscipline2 = await paper
+        .collection("PaperDetails")
+        .find({
+          CBCS_CATEGORY: "MAJOR",
+          String_Code: disciplineMajor2?.String_Code,
+          Semester: myobj.sem,
+        })
+        .toArray();
+
+      const paperMajorDiscipline2 =
+        MajorDiscipline2?.filter((p) => {
+          return p?.TYPE === "THEORY" && p?.COURSE_NAME !== "CIA";
+        }) ?? [];
+
+      const PracticalMajorDiscipline2 =
+        MajorDiscipline2.filter((p) => p?.TYPE === "PRACTICAL") ?? [];
+
+      const MinorDiscipline = await paper
+        .collection("PaperDetails")
+        .find({
+          CBCS_CATEGORY: "MINOR",
+          String_Code: disciplineMinor?.String_Code,
+          Semester: myobj.sem,
+        })
+        .toArray();
+
+      const paperMinorDiscipline =
+        MinorDiscipline?.filter((p) => {
+          return p?.TYPE === "THEORY" && p?.COURSE_NAME !== "CIA";
+        }) ?? [];
+
+      const PracticalMinorDiscipline =
+        MinorDiscipline.filter((p) => p?.TYPE === "PRACTICAL") ?? [];
+
+      // console.log("Paper", paperMajorDiscipline1)
+
+      program = await CoursesDB.collection("COURSES").findOne({
+        PRG_CODE: row.PRG_CODE,
+        CourseNameCode: parseInt(row.cc),
+        TYPE: "NEP",
+      });
+
+      //Regular or Ex
+      const YearCat = row.cat === 1 ? "Regular Candidate" : "Ex-Student";
+
+      // INSERT CLEAN DATA
+      recordsToInsert.push({
+        Result: {
+          PRG_CODE: PRG_CODE,
+          Session: myobj.session,
+          EnrolmentNumber: row.en,
+          RollNumber: row.rn,
+          YearCategory: YearCat,
+
+          //Discipline 1
+          ...(disciplineMajor1?.DISCIPLINE && {
+            MajorDiscipline1: disciplineMajor1.DISCIPLINE,
+          }),
+          ...(disciplineMajor1Details?.DISCIPLINE && {
+            ...(disciplineMajor1Details?.MajorCiaMax != null && {
+              MajorDiscipline1CiaMax: disciplineMajor1Details.MajorCiaMax,
+            }),
+
+            ...(disciplineMajor1Details?.MajorTotalMax != null && {
+              MajorDiscipline1TotalMax: disciplineMajor1Details.MajorTotalMax,
+            }),
+
+            ...(disciplineMajor1Details?.MajorTotalCreditMax != null && {
+              MajorDiscipline1TotalCreditMax:
+                disciplineMajor1Details.MajorTotalCreditMax,
+            }),
+          }),
+
+          //Discipline 1 Major Paper 1
+
+          ...(paperMajorDiscipline1[0]?.COURSE_NAME != null && {
+            MajorDiscipline1Paper1: paperMajorDiscipline1[0]?.COURSE_NAME,
+            ...(disciplineMajor1Details?.Major1Max != null && {
+              MajorDiscipline1Paper1Max: disciplineMajor1Details?.Major1Max,
+            }),
+
+            ...(disciplineMajor1Details?.Major1CreditMax != null && {
+              MajorDiscipline1Paper1CreditMax:
+                disciplineMajor1Details?.Major1CreditMax,
+            }),
+          }),
+
+          //Discipline 1 Major Paper 2
+          ...(paperMajorDiscipline1[1]?.COURSE_NAME != null && {
+            MajorDiscipline1Paper2: paperMajorDiscipline1[1]?.COURSE_NAME,
+
+            ...(disciplineMajor1Details?.Major2Max != null && {
+              MajorDiscipline1Paper2Max: disciplineMajor1Details?.Major2Max,
+            }),
+            ...(disciplineMajor1Details?.Major2CreditMax != null && {
+              MajorDiscipline1Paper2CreditMax:
+                disciplineMajor1Details?.Major2CreditMax,
+            }),
+          }),
+
+          //Discipline 1 Major Paper 3
+
+          ...(paperMajorDiscipline1[2]?.COURSE_NAME != null && {
+            MajorDiscipline1Paper3: paperMajorDiscipline1[2]?.COURSE_NAME,
+            ...(disciplineMajor1Details?.Major3Max != null && {
+              MajorDiscipline1Paper3Max: disciplineMajor1Details?.Major3Max,
+            }),
+            ...(disciplineMajor1Details?.Major3CreditMax != null && {
+              MajorDiscipline1Paper3CreditMax:
+                disciplineMajor1Details?.Major3CreditMax,
+            }),
+          }),
+
+          //Discipline 1 Practical
+
+          ...(PracticalMajorDiscipline1[0]?.COURSE_NAME != null && {
+            MajorDiscipline1Practical:
+              PracticalMajorDiscipline1[0]?.COURSE_NAME,
+            ...(disciplineMajor1Details?.MajorPracticleMax != null && {
+              MajorDiscipline1PracticalMax:
+                disciplineMajor1Details?.MajorPracticleMax,
+            }),
+            ...(disciplineMajor1Details?.MajorPracticleCreditMax != null && {
+              MajorDiscipline1PracticalCreditMax:
+                disciplineMajor1Details?.MajorPracticleCreditMax,
+            }),
+          }),
+
+          //Discipline 2
+          ...(disciplineMajor2?.DISCIPLINE && {
+            MajorDiscipline2: disciplineMajor2?.DISCIPLINE,
+            ...(disciplineMajor2Details?.MajorCiaMax != null && {
+              MajorDiscipline2CiaMax: disciplineMajor2Details?.MajorCiaMax,
+            }),
+            ...(disciplineMajor2Details?.MajorTotalMax != null && {
+              MajorDiscipline2TotalMax: disciplineMajor2Details?.MajorTotalMax,
+            }),
+            ...(disciplineMajor2Details?.MajorTotalCreditMax != null && {
+              MajorDiscipline2TotalCreditMax:
+                disciplineMajor2Details?.MajorTotalCreditMax,
+            }),
+          }),
+
+          //Discipline 2 Major Paper 1
+
+          ...(paperMajorDiscipline2[0]?.COURSE_NAME && {
+            MajorDiscipline2Paper1: paperMajorDiscipline2[0]?.COURSE_NAME,
+            ...(disciplineMajor2Details?.Major1Max != null && {
+              MajorDiscipline2Paper1Max: disciplineMajor2Details?.Major1Max,
+            }),
+            ...(disciplineMajor2Details?.Major1CreditMax != null && {
+              MajorDiscipline2Paper1CreditMax:
+                disciplineMajor2Details?.Major1CreditMax,
+            }),
+          }),
+
+          //Discipline 2 Major Paper 2
+
+          ...(paperMajorDiscipline2[1]?.COURSE_NAME && {
+            MajorDiscipline2Paper2: paperMajorDiscipline2[1]?.COURSE_NAME,
+            ...(disciplineMajor2Details?.Major2Max != null && {
+              MajorDiscipline2Paper2Max: disciplineMajor2Details?.Major2Max,
+            }),
+            ...(disciplineMajor2Details?.Major2CreditMax != null && {
+              MajorDiscipline2Paper2CreditMax:
+                disciplineMajor2Details?.Major2CreditMax,
+            }),
+          }),
+
+          //Discipline 2 Major Paper 3
+
+          ...(paperMajorDiscipline2[2]?.COURSE_NAME && {
+            MajorDiscipline2Paper3: paperMajorDiscipline2[2]?.COURSE_NAME,
+            ...(disciplineMajor2Details?.Major3Max != null && {
+              MajorDiscipline2Paper3Max: disciplineMajor2Details?.Major3Max,
+            }),
+            ...(disciplineMajor2Details?.Major3CreditMax != null && {
+              MajorDiscipline2Paper3CreditMax:
+                disciplineMajor2Details?.Major3CreditMax,
+            }),
+          }),
+
+          //Discipline 2 Practical
+
+          ...(PracticalMajorDiscipline2[0]?.COURSE_NAME != null && {
+            MajorDiscipline2Practical:
+              PracticalMajorDiscipline2[0]?.COURSE_NAME,
+            ...(disciplineMajor2Details?.MajorPracticleMax != null && {
+              MajorDiscipline2PracticalMax:
+                disciplineMajor2Details?.MajorPracticleMax,
+            }),
+            ...(disciplineMajor2Details?.MajorPracticleCreditMax != null && {
+              MajorDiscipline2PracticalCreditMax:
+                disciplineMajor2Details?.MajorPracticleCreditMax,
+            }),
+          }),
+
+          //Minor Discipline
+          ...(disciplineMinorDetails?.DISCIPLINE && {
+            MinorDiscipline: disciplineMinorDetails?.DISCIPLINE,
+            ...(disciplineMinorDetails?.Minor1CiaMax != null && {
+              MinorDisciplineCiaMax: disciplineMinorDetails?.Minor1CiaMax,
+            }),
+            ...(disciplineMinorDetails?.MinorTotalMax != null && {
+              MinorDisciplineTotalMax: disciplineMinorDetails?.MinorTotalMax,
+            }),
+
+            ...(disciplineMinorDetails?.MinorCreditMax != null && {
+              MinorDisciplineTotalCreditMax:
+                disciplineMinorDetails?.MinorCreditMax,
+            }),
+          }),
+
+          //Minor  Discipline Papers
+          ...(paperMinorDiscipline[0]?.COURSE_NAME != null && {
+            MinorDisciplinePaper: paperMinorDiscipline[0]?.COURSE_NAME,
+            ...(disciplineMinorDetails?.Minor1Max != null && {
+              MinorDisciplinePaperMax: disciplineMinorDetails?.Minor1Max,
+            }),
+            ...(disciplineMinorDetails?.Minor1CreditMax != null && {
+              MinorDisciplinePaperCreditMax:
+                disciplineMinorDetails?.Minor1CreditMax,
+            }),
+          }),
+
+          //Minor  Discipline Practical
+
+          ...(PracticalMinorDiscipline[0]?.COURSE_NAME != null && {
+            MinorDisciplinePractical: PracticalMinorDiscipline[0]?.COURSE_NAME,
+            ...(disciplineMinorDetails?.Minor1PracticleMax != null && {
+              MinorDisciplinePracticalMax:
+                disciplineMinorDetails?.Minor1PracticleMax,
+            }),
+            ...(disciplineMinorDetails?.Minor1PracticleCreditMax != null && {
+              MinorDisciplinePracticalCreditMax:
+                disciplineMinorDetails?.Minor1PracticleCreditMax,
+            }),
+          }),
+          ...(row?.skil != null && {
+            Skill: row?.skil,
+          }),
+        },
+        ...(row?.skil != null && {
+          Skill: row?.skil,
+        }),
+      });
+    }
+
+    let resultData = [];
+
+    for (const rec of recordsToInsert) {
+      resultData.push(rec.Result);
+    }
+
+    const AdmissionDB = client.db("NepUG");
+
+    if (resultData.length > 0) {
+      await AdmissionDB.collection(`${myobj.DB_CL}_RESULT`).insertMany(
+        resultData,
       );
+    }
 
-      FinalData.push({...roll, ...profileInfo});
-    })
-  }
+    //=========
+    //Responce
+    //=========
 
-  // console.log("Final Data for marksheet", FinalData)
-
-
-
-  
-  res.status(200).json({
-    status: "success",
-    message: "Nep Marksheet API is working fine",
-    data: FinalData
-  })
-}
-
-
+    res.status(200).json({
+      status: "success",
+      message: "Nep Marksheet API is working fine",
+    });
+  };
 }
 
 export default userController;

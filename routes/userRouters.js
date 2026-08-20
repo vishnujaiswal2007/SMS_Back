@@ -25,6 +25,7 @@ router.use('/updateProfile', checkUserAuth)
 router.use('/getAttendanceNep', checkUserAuth)
 router.use('/getNepUnits', checkUserAuth)
 router.use('/marksheetNEP', checkUserAuth)
+router.use('/registeredStudentNep', checkUserAuth)
 
 
 
@@ -60,8 +61,29 @@ router.post('/makeResult', userController.MakeResult)
 router.post('/modifyMarks', userController.ModifyNepMarks)
 router.use('/subjectModify', userController.SubjectModify)
 router.post('/getProfile', userController.getProfile)
-router.post('/updateProfile', upload.fields([{ name: 'Candidature', maxCount: 1 }]), userController.updateProfile)
+// router.post('/updateProfile', upload.fields([{ name: 'Candidature', maxCount: 1 }]), userController.updateProfile)
+router.post(
+
+  '/updateProfile',
+
+  upload.fields([
+
+    // Candidature Status Document
+    { name: 'Candidature', maxCount: 1 },
+
+    // Student Photo
+    { name: 'photo', maxCount: 1 },
+
+    // Photo Change Supporting Document
+    { name: 'PhotoSupportingDocument', maxCount: 1 }
+
+  ]),
+
+  userController.updateProfile
+
+);
 router.post('/getAttendanceNep', userController.getAttendanceNep)
 router.post('/getNepUnits', userController.getNEPUnits) 
 router.post('/marksheetNEP', userController.getNepMarksheet)
+router.post('/registeredStudentNep', upload.single("file"), userController.RegisteredStudentNEP)
 export default router

@@ -1,0 +1,382 @@
+static RegisteredStudentNEP = async (req, res)=>{
+
+  const { SEM, ...rest } = req.body;
+
+  const myobj = { ...rest, ...JSON.parse(SEM) };
+
+  const DbclCode = myobj.DB_CL.replace(/\d+$/, "_PROFILE");
+
+  const client = new MongoClient(URL);
+  await client.connect();
+
+  const CoursesDB = client.db("COURSES");
+  const CodeDB = client.db("CODE");
+  const discipline = client.db("NEP");
+  const paper = client.db("NEP");
+
+
+      // -----------------------------
+      // BASIC DATE INFO
+      // -----------------------------
+      const date = new Date();
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+      const formattedDate = `${day}/${month}/${year}`;
+      // const lastOfYear = String(year).slice(2);
+      // const nextofYear = parseInt(lastOfYear) + 1;
+
+      const PRG_CODE = myobj.PRG;
+
+      // -----------------------------
+      // READ EXCEL
+      // -----------------------------
+      const fileBuffer = req.file.buffer;
+      const workbook = XLSX.read(fileBuffer, { type: "buffer" });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const data = XLSX.utils.sheet_to_json(sheet);
+
+      let wrongRows = [];
+      let recordsToInsert = [];
+
+      // -----------------------------
+      // PROCESS EACH ROW
+      // -----------------------------
+      let program;
+
+      // -----------------------------
+      // FOR BCOM
+      // -----------------------------
+
+
+
+      for (const row of data) {
+          //--------------
+          //Discipline
+          //-----------
+          const disciplineMajor1 = await discipline
+            .collection("Discipline")
+            .findOne({ Number_Code: row.sb11 });
+          const disciplineMajor2 = await discipline
+            .collection("Discipline")
+            .findOne({ Number_Code: row.sb12 });
+          const disciplineMajor3 = await discipline
+            .collection("Discipline")
+            .findOne({ Number_Code: row.sb13 });
+          const disciplineMinor = await discipline
+            .collection("Discipline")
+            .findOne({ Number_Code: row.sb14 });
+
+          //-------------------
+          //Discipline Paper marks details
+          //--------------------
+          const disciplineMajor1Details = await discipline
+            .collection("DiciplineDetails")
+            .findOne({ DISCIPLINE: disciplineMajor1?.DISCIPLINE });
+          const disciplineMajor2Details = await discipline
+            .collection("DiciplineDetails")
+            .findOne({ DISCIPLINE: disciplineMajor2?.DISCIPLINE });
+          const disciplineMajor3Details = await discipline
+            .collection("DiciplineDetails")
+            .findOne({ DISCIPLINE: disciplineMajor3?.DISCIPLINE });
+          const disciplineMinorDetails = await discipline
+            .collection("DiciplineDetails")
+            .findOne({ DISCIPLINE: disciplineMinor?.DISCIPLINE });
+
+          //-------------
+          //Major and Minor Papers of Major Minor Discipline
+          //-----------
+
+          const paperMajorDiscipline1 = await paper
+            .collection("PaperDetails")
+            .find({
+              CBCS_CATEGORY: "MAJOR",
+              DISCIPLINE: disciplineMajor1Details?.DISCIPLINE,
+            })
+            .toArray();
+
+          // const paperMinorDiscipline1 = await paper.collection("PaperDetails").findOne({CBCS_CATEGORY:"MINOR", String_Code: disciplineMajor1?.String_Code})
+
+          const paperMajorDiscipline2 = await paper
+            .collection("PaperDetails")
+            .find({
+              CBCS_CATEGORY: "MAJOR",
+              DISCIPLINE: disciplineMajor2Details?.DISCIPLINE,
+            })
+            .toArray();
+
+          // const paperMinorDiscipline2 = await paper.collection("PaperDetails").findOne({CBCS_CATEGORY:"MINOR", String_Code: disciplineMajor2?.String_Code})
+
+          const paperMajorDiscipline3 = await paper
+            .collection("PaperDetails")
+            .find({
+              CBCS_CATEGORY: "MAJOR",
+              DISCIPLINE: disciplineMajor3Details?.DISCIPLINE,
+            })
+            .toArray();
+
+          const paperMinorDiscipline = await paper
+            .collection("PaperDetails")
+            .findOne({
+              CBCS_CATEGORY: "MINOR",
+              DISCIPLINE: disciplineMinorDetails?.DISCIPLINE,
+            });
+
+          program = await CoursesDB.collection("COURSES").findOne({
+            PRG_CODE: row.PRG_CODE,
+            CourseNameCode: parseInt(row.cc),
+            TYPE: "NEP",
+          });
+
+          // WRONG PROGRAM
+          if (!program || program.PRG_CODE !== PRG_CODE) {
+            row.Reason = "Check Programm Code";
+            wrongRows.push(row);
+            continue;
+          }
+
+          const unit = await CodeDB.collection("UNITCODE").findOne({
+            Unit_Code: row.uc,
+          });
+
+          if (!unit) {
+            row.Reason = "Check Unit";
+            wrongRows.push(row);
+            continue;
+          }
+
+          //Regular or Ex
+          const YearCat = row.cat === 1 ? "Regular Candidate" : "Ex-Student";
+
+          // INSERT CLEAN DATA
+          recordsToInsert.push({
+
+            Result: {
+              PRG_CODE: PRG_CODE,
+              Session: myobj.session,
+              EnrolmentNumber: row.en,
+              RollNumber: row.rn,
+              YearCategory: YearCat,
+              //Discipline 1
+              ...(disciplineMajor1?.DISCIPLINE && {
+                MajorDiscipline1: disciplineMajor1.DISCIPLINE,
+              }),
+
+              ...(disciplineMajor1Details?.DISCIPLINE && {
+                ...(disciplineMajor1Details?.MajorCiaMax != null && {
+                  MajorDiscipline1CiaMax: disciplineMajor1Details.MajorCiaMax,
+                  MajorDiscipline1CiaObtained: "",
+                }),
+                ...(disciplineMajor1Details?.MajorPracticalMax != null && {
+                  MajorDiscipline1PracticalMax:
+                    disciplineMajor1Details.MajorPracticalMax,
+                  MajorDiscipline1PracticalObtained: "",
+                }),
+
+                ...(disciplineMajor1Details?.MajorPracticalCreditMax !=
+                  null && {
+                  MajorDiscipline1PracticalCreditMax:
+                    disciplineMajor1Details.MajorPracticalCreditMax,
+                  MajorDiscipline1PracticalObtained: "",
+                }),
+                ...(disciplineMajor1Details?.MajorTotalMax != null && {
+                  MajorDiscipline1TotalMax:
+                    disciplineMajor1Details.MajorTotalMax,
+                  MajorDiscipline1TotalObtained: "",
+                }),
+
+                ...(disciplineMajor1Details?.MajorTotalCreditMax != null && {
+                  MajorDiscipline1TotalCreditMax:
+                    disciplineMajor1Details.MajorTotalCreditMax,
+                  MajorDiscipline1TotalCreditObtained: "",
+                }),
+              }),
+
+              //Discipline 1 Major Paper 1
+
+              ...(paperMajorDiscipline1[0]?.COURSE_NAME != null && {
+                MajorDiscipline1Paper1: paperMajorDiscipline1[0]?.COURSE_NAME,
+                ...(disciplineMajor1Details?.Major1Max != null && {
+                  MajorDiscipline1Paper1Max: disciplineMajor1Details?.Major1Max,
+                  MajorDiscipline1Paper1Obtained: "",
+                }),
+                ...(disciplineMajor1Details?.Major1CreditMax != null && {
+                  MajorDiscipline1Paper1CreditMax:
+                    disciplineMajor1Details?.Major1CreditMax,
+                  MajorDiscipline1Paper1CreditObtained: "",
+                }),
+              }),
+
+              //Discipline 2
+              ...(disciplineMajor2?.DISCIPLINE && {
+                MajorDiscipline2: disciplineMajor2?.DISCIPLINE,
+                ...(disciplineMajor2Details?.MajorCiaMax != null && {
+                  MajorDiscipline2CiaMax: disciplineMajor2Details?.MajorCiaMax,
+                  MajorDiscipline2CiaObtained: "",
+                }),
+                ...(disciplineMajor2Details?.MajorPracticalMax != null && {
+                  MajorDiscipline2PracticalMax:
+                    disciplineMajor2Details?.MajorPracticalMax,
+                  MajorDiscipline2PracticalObtained: "",
+                }),
+                ...(disciplineMajor2Details?.MajorPracticalCreditMax !=
+                  null && {
+                  MajorDiscipline2PracticalCreditMax:
+                    disciplineMajor2Details?.MajorPracticalCreditMax,
+                  MajorDiscipline2PracticalCreditObtained: "",
+                }),
+                ...(disciplineMajor2Details?.MajorTotalMax != null && {
+                  MajorDiscipline2TotalMax:
+                    disciplineMajor2Details?.MajorTotalMax,
+                  MajorDiscipline2TotalObtained: "",
+                }),
+                ...(disciplineMajor2Details?.MajorTotalCreditMax != null && {
+                  MajorDiscipline2TotalCreditMax:
+                    disciplineMajor2Details?.MajorTotalCreditMax,
+                  MajorDiscipline2TotalCreditObtained: "",
+                }),
+              }),
+
+              //Discipline 2 Major Paper 1
+
+              ...(paperMajorDiscipline2[0]?.COURSE_NAME && {
+                MajorDiscipline2Paper1: paperMajorDiscipline2[0]?.COURSE_NAME,
+                ...(disciplineMajor2Details?.Major1Max != null && {
+                  MajorDiscipline2Paper1Max: disciplineMajor2Details?.Major1Max,
+                  MajorDiscipline2Paper1Obtained: "",
+                }),
+                ...(disciplineMajor2Details?.Major1CreditMax != null && {
+                  MajorDiscipline2Paper1CreditMax:
+                    disciplineMajor2Details?.Major1CreditMax,
+                  MajorDiscipline2Paper1CreditObtained: "",
+                }),
+              }),
+
+              //Discipline 3
+              ...(disciplineMajor3?.DISCIPLINE && {
+                MajorDiscipline3: disciplineMajor3?.DISCIPLINE,
+                ...(disciplineMajor3Details?.MajorCiaMax != null && {
+                  MajorDiscipline3CiaMax: disciplineMajor3Details?.MajorCiaMax,
+                  MajorDiscipline3CiaObtained: "",
+                }),
+                ...(disciplineMajor3Details?.MajorPracticalMax != null && {
+                  MajorDiscipline3PracticalMax:
+                    disciplineMajor3Details?.MajorPracticalMax,
+                  MajorDiscipline3PracticalObtained: "",
+                }),
+                ...(disciplineMajor3Details?.MajorPracticalCreditMax !=
+                  null && {
+                  MajorDiscipline3PracticalCreditMax:
+                    disciplineMajor3Details?.MajorPracticalCreditMax,
+                  MajorDiscipline3PracticalCreditObtained: "",
+                }),
+                ...(disciplineMajor3Details?.MajorTotalMax != null && {
+                  MajorDiscipline3TotalMax:
+                    disciplineMajor3Details?.MajorTotalMax,
+                  MajorDiscipline3TotalObtained: "",
+                }),
+                ...(disciplineMajor3Details?.MajorTotalCreditMax != null && {
+                  MajorDiscipline3TotalCreditMax:
+                    disciplineMajor3Details?.MajorTotalCreditMax,
+                  MajorDiscipline3TotalCreditObtained: "",
+                }),
+              }),
+
+              //Discipline 3 Major Paper 1
+
+              ...(paperMajorDiscipline3[0]?.COURSE_NAME && {
+                MajorDiscipline3Paper1: paperMajorDiscipline3[0]?.COURSE_NAME,
+                ...(disciplineMajor3Details?.Major1Max != null && {
+                  MajorDiscipline3Paper1Max: disciplineMajor3Details?.Major1Max,
+                  MajorDiscipline3Paper1Obtained: "",
+                }),
+                ...(disciplineMajor3Details?.Major1CreditMax != null && {
+                  MajorDiscipline3Paper1CreditMax:
+                    disciplineMajor3Details?.Major1CreditMax,
+                  MajorDiscipline3Paper1CreditObtained: "",
+                }),
+              }),
+
+              //Minor Discipline
+              ...(disciplineMinorDetails?.DISCIPLINE && {
+                MinorDiscipline: disciplineMinorDetails?.DISCIPLINE,
+              }),
+
+              //Minor  Discipline Papers
+              ...(paperMinorDiscipline?.COURSE_NAME && {
+                MinorDisciplinePaper: paperMinorDiscipline?.COURSE_NAME,
+                ...(disciplineMinorDetails?.Minor1Max != null && {
+                  MinorDisciplinePaperMax: disciplineMinorDetails?.Minor1Max,
+                  MinorDisciplinePaperObtained: "",
+                }),
+                ...(disciplineMinorDetails?.Minor1CreditMax != null && {
+                  MinorDisciplinePaperCreditMax:
+                    disciplineMinorDetails?.Minor1CreditMax,
+                  MinorDisciplinePaperCreditObtained: "",
+                }),
+                ...(disciplineMinorDetails?.Minor1CiaMax != null && {
+                  MinorDisciplineCiaMax: disciplineMinorDetails?.Minor1CiaMax,
+                  MinorDisciplineCiaObtained: "",
+                }),
+                ...(disciplineMinorDetails?.Minor1PracticalMax != null && {
+                  MinorDisciplinePracticalMax:
+                    disciplineMinorDetails?.Minor1PracticalMax,
+                  MinorDisciplineCiaObtained: "",
+                }),
+                ...(disciplineMinorDetails?.Minor1PracticalCreditMax !=
+                  null && {
+                  MinorDisciplinePracticalCreditMax:
+                    disciplineMinorDetails?.Minor1PracticalCreditMax,
+                  MinorDisciplinePracticalCreditObtained: "",
+                }),
+                ...(disciplineMinorDetails?.MinorTotalMax != null && {
+                  MinorDisciplineTotalMax:
+                    disciplineMinorDetails?.MinorTotalMax,
+                  MinorDisciplineTotalObtained: "",
+                }),
+                ...(disciplineMinorDetails?.MinorCreditMax != null && {
+                  MinorDisciplineCreditMax:
+                    disciplineMinorDetails?.MinorCreditMax,
+                  MinorDisciplineCreditObtained: "",
+                }),
+              }),
+              ...(row?.skil != null && {
+                Skill: row?.skil,
+              }),
+            },
+          })
+        }
+
+let resultData = [];
+
+for (const rec of recordsToInsert) {
+       
+        resultData.push(rec.Result);
+        
+      }
+
+
+      const AdmissionDB = client.db("NepUG");
+
+
+      if (resultData.length > 0) {
+        await AdmissionDB.collection(`${myobj.DB_CL}_RESULT`).insertMany(
+          resultData,
+        );
+      }
+
+      
+      
+  
+
+  //=========
+  //Responce
+  //=========
+
+  res.status(200).json({
+    status: "success",
+    message: "Nep Marksheet API is working fine",
+  })
+
+}
