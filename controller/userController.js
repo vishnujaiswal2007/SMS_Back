@@ -329,6 +329,8 @@ class userController {
   };
 
   static getcourse = async (req, res) => {
+      // console.log("CR", req.params.CR)
+      // console.log("Type", req.params.type)
     const client = new MongoClient(URL);
     if (req.params.type === "NEP") {
       const database = client.db("NEP");
@@ -346,6 +348,7 @@ class userController {
         data,
       });
     } else {
+    
       const database = client.db("COURSES");
       const data = await database
         .collection("COURSES")
@@ -356,7 +359,7 @@ class userController {
         });
       res.send({
         status: "sucess",
-        message: "UG Courses",
+        message: "Got It",
         data,
       });
     }
