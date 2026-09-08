@@ -329,8 +329,8 @@ class userController {
   };
 
   static getcourse = async (req, res) => {
-      // console.log("CR", req.params.CR)
-      // console.log("Type", req.params.type)
+    // console.log("CR", req.params.CR)
+    // console.log("Type", req.params.type)
     const client = new MongoClient(URL);
     if (req.params.type === "NEP") {
       const database = client.db("NEP");
@@ -348,7 +348,6 @@ class userController {
         data,
       });
     } else {
-    
       const database = client.db("COURSES");
       const data = await database
         .collection("COURSES")
@@ -1727,7 +1726,11 @@ class userController {
       const data = await client
         .db("NepUG")
         .collection(myobj.sem.toString().slice(0, 3) + "_PROFILE")
-        .distinct("Unit", { Session: myobj.session });
+        .distinct(
+          "Unit",
+          // { Session: myobj.session }
+        );
+      // console.log("Data", data)
       res.send({
         status: "success",
         message: "NEP Units",
@@ -4992,425 +4995,310 @@ class userController {
   //   }
   // };
 
+  // ============================================================
+  // CONTROLLER
+  // ============================================================
 
+  static updateProfile = async (req, res) => {
+    // ==========================================================
+    // BASIC DATE INFO
+    // ==========================================================
 
+    const date = new Date();
 
-// ============================================================
-// CONTROLLER
-// ============================================================
+    const day = String(date.getDate()).padStart(2, "0");
 
-static updateProfile = async (req, res) => {
+    const month = String(date.getMonth() + 1).padStart(2, "0");
 
-  // ==========================================================
-  // BASIC DATE INFO
-  // ==========================================================
+    const year = date.getFullYear();
 
-  const date = new Date();
+    const documentDate = `${day}_${month}_${year}`;
 
-  const day = String(
-    date.getDate()
-  ).padStart(2, "0");
+    const createdDate = `${day}/${month}/${year}`;
 
-  const month = String(
-    date.getMonth() + 1
-  ).padStart(2, "0");
+    const timeStamp = `${date.getHours()}_${date.getMinutes()}_${date.getSeconds()}_${date.getMilliseconds()}`;
 
-  const year = date.getFullYear();
+    try {
+      // ========================================================
+      // STRING -> OBJECT
+      // ========================================================
 
-  const documentDate =
-    `${day}_${month}_${year}`;
+      const candidate = JSON.parse(req.body.candidate);
 
-  const createdDate =
-    `${day}/${month}/${year}`;
+      delete candidate._id;
 
-  const timeStamp =
-    `${date.getHours()}_${date.getMinutes()}_${date.getSeconds()}_${date.getMilliseconds()}`;
-
-  try {
-
-    // ========================================================
-    // STRING -> OBJECT
-    // ========================================================
-
-    const candidate =
-      JSON.parse(req.body.candidate);
-
-    delete candidate._id;
-
-    Object.keys(candidate).forEach(
-      (key) => {
-
+      Object.keys(candidate).forEach((key) => {
         if (key.startsWith("RN")) {
           delete candidate[key];
         }
+      });
 
-      }
-    );
+      // ========================================================
+      // PROGRAM LABEL
+      // ========================================================
 
-    // ========================================================
-    // PROGRAM LABEL
-    // ========================================================
+      const labelMap = {
+        PRE006: "BAN",
+        PRE007: "BSN",
+        PRE008: "BCN",
+      };
 
-    const labelMap = {
+      // ========================================================
+      // PHOTO
+      // ========================================================
 
-      PRE006: "BAN",
-      PRE007: "BSN",
-      PRE008: "BCN",
+      if (req.files && req.files.photo && req.files.photo.length > 0) {
+        const file = req.files.photo[0];
 
-    };
+        // ----------------------------------------
+        // PHOTO FOLDER
+        // ----------------------------------------
 
-    // ========================================================
-    // PHOTO
-    // ========================================================
-
-    if (
-      req.files &&
-      req.files.photo &&
-      req.files.photo.length > 0
-    ) {
-
-      const file =
-        req.files.photo[0];
-
-      // ----------------------------------------
-      // PHOTO FOLDER
-      // ----------------------------------------
-
-      const photoFolder =
-        path.join(
+        const photoFolder = path.join(
           "/media/acc_inc/B/SMS/Photo",
 
-          String(
-            candidate.ProgrameName
-          ),
+          String(candidate.ProgrameName),
 
-          String(
-            candidate.YearOfAdmission
-          )
+          String(candidate.YearOfAdmission),
         );
 
-      fs.mkdirSync(
-        photoFolder,
-        {
+        fs.mkdirSync(photoFolder, {
           recursive: true,
-        }
-      );
+        });
 
-      // ----------------------------------------
-      // FIXED PHOTO NAME
-      // ----------------------------------------
+        // ----------------------------------------
+        // FIXED PHOTO NAME
+        // ----------------------------------------
 
-      const photoFileName =
-        candidate.EnrolmentNumber
-          .toUpperCase() +
-        ".jpg";
+        const photoFileName = candidate.EnrolmentNumber.toUpperCase() + ".jpg";
 
-      const finalPhotoPath =
-        path.join(
-          photoFolder,
-          photoFileName
-        );
+        const finalPhotoPath = path.join(photoFolder, photoFileName);
 
-      // ----------------------------------------
-      // SAVE PHOTO
-      // ----------------------------------------
+        // ----------------------------------------
+        // SAVE PHOTO
+        // ----------------------------------------
 
-      fs.writeFileSync(
-        finalPhotoPath,
-        file.buffer
-      );
-    }
+        fs.writeFileSync(finalPhotoPath, file.buffer);
+      }
 
-    // ========================================================
-    // PHOTO SUPPORTING DOCUMENT
-    // ========================================================
-    //
-    // IMPORTANT:
-    //
-    // This is completely separate from
-    // CandidatureDocument.
-    //
-    // Frontend field:
-    //
-    // PhotoSupportingDocument
-    //
-    // MongoDB field:
-    //
-    // candidate.PhotoSupportingDocument
-    //
-    // ========================================================
+      // ========================================================
+      // PHOTO SUPPORTING DOCUMENT
+      // ========================================================
+      //
+      // IMPORTANT:
+      //
+      // This is completely separate from
+      // CandidatureDocument.
+      //
+      // Frontend field:
+      //
+      // PhotoSupportingDocument
+      //
+      // MongoDB field:
+      //
+      // candidate.PhotoSupportingDocument
+      //
+      // ========================================================
 
-    if (
-      req.files &&
-      req.files.PhotoSupportingDocument &&
-      req.files.PhotoSupportingDocument.length > 0
-    ) {
+      if (
+        req.files &&
+        req.files.PhotoSupportingDocument &&
+        req.files.PhotoSupportingDocument.length > 0
+      ) {
+        const file = req.files.PhotoSupportingDocument[0];
 
-      const file =
-        req.files.PhotoSupportingDocument[0];
+        // ----------------------------------------
+        // PHOTO DOCUMENT FOLDER
+        // ----------------------------------------
 
-      // ----------------------------------------
-      // PHOTO DOCUMENT FOLDER
-      // ----------------------------------------
-
-      const folderPath =
-        path.join(
+        const folderPath = path.join(
           "/media/acc_inc/B/SMS/Documents",
 
           candidate.EnrolmentNumber,
 
-          "PhotoChange"
+          "PhotoChange",
         );
 
-      fs.mkdirSync(
-        folderPath,
-        {
+        fs.mkdirSync(folderPath, {
           recursive: true,
-        }
-      );
+        });
 
-      // ----------------------------------------
-      // ORIGINAL EXTENSION
-      // ----------------------------------------
+        // ----------------------------------------
+        // ORIGINAL EXTENSION
+        // ----------------------------------------
 
-      const ext =
-        path.extname(
-          file.originalname
-        ).toLowerCase();
+        const ext = path.extname(file.originalname).toLowerCase();
 
-      // ----------------------------------------
-      // UNIQUE FILE NAME
-      // ----------------------------------------
+        // ----------------------------------------
+        // UNIQUE FILE NAME
+        // ----------------------------------------
 
-      const fileName =
-        `PhotoChange_${documentDate}_${timeStamp}${ext}`;
+        const fileName = `PhotoChange_${documentDate}_${timeStamp}${ext}`;
 
-      const finalPath =
-        path.join(
-          folderPath,
-          fileName
-        );
+        const finalPath = path.join(folderPath, fileName);
 
-      // ----------------------------------------
-      // SAVE
-      // ----------------------------------------
+        // ----------------------------------------
+        // SAVE
+        // ----------------------------------------
 
-      fs.writeFileSync(
-        finalPath,
-        file.buffer
-      );
+        fs.writeFileSync(finalPath, file.buffer);
 
-      // ----------------------------------------
-      // MONGODB FIELD
-      // ----------------------------------------
+        // ----------------------------------------
+        // MONGODB FIELD
+        // ----------------------------------------
 
-      candidate.PhotoSupportingDocument =
-        path
+        candidate.PhotoSupportingDocument = path
           .join(
             "/Documents",
             candidate.EnrolmentNumber,
             "PhotoChange",
-            fileName
+            fileName,
           )
-          .replace(
-            /\\/g,
-            "/"
-          );
-    }
+          .replace(/\\/g, "/");
+      }
 
-    // ========================================================
-    // CANDIDATURE STATUS DOCUMENT
-    // ========================================================
-    //
-    // This remains completely separate.
-    //
-    // Frontend field:
-    //
-    // Candidature
-    //
-    // MongoDB field:
-    //
-    // CandidatureDocument
-    //
-    // ========================================================
+      // ========================================================
+      // CANDIDATURE STATUS DOCUMENT
+      // ========================================================
+      //
+      // This remains completely separate.
+      //
+      // Frontend field:
+      //
+      // Candidature
+      //
+      // MongoDB field:
+      //
+      // CandidatureDocument
+      //
+      // ========================================================
 
-    if (
-      req.files &&
-      req.files.Candidature &&
-      req.files.Candidature.length > 0
-    ) {
+      if (
+        req.files &&
+        req.files.Candidature &&
+        req.files.Candidature.length > 0
+      ) {
+        const file = req.files.Candidature[0];
 
-      const file =
-        req.files.Candidature[0];
+        // ----------------------------------------
+        // CANDIDATURE FOLDER
+        // ----------------------------------------
 
-      // ----------------------------------------
-      // CANDIDATURE FOLDER
-      // ----------------------------------------
-
-      const folderPath =
-        path.join(
+        const folderPath = path.join(
           "/media/acc_inc/B/SMS/Documents",
 
           candidate.EnrolmentNumber,
 
-          "Candidature"
+          "Candidature",
         );
 
-      fs.mkdirSync(
-        folderPath,
-        {
+        fs.mkdirSync(folderPath, {
           recursive: true,
-        }
-      );
+        });
 
-      // ----------------------------------------
-      // ORIGINAL EXTENSION
-      // ----------------------------------------
+        // ----------------------------------------
+        // ORIGINAL EXTENSION
+        // ----------------------------------------
 
-      const ext =
-        path.extname(
-          file.originalname
-        ).toLowerCase();
+        const ext = path.extname(file.originalname).toLowerCase();
 
-      // ----------------------------------------
-      // UNIQUE FILE NAME
-      // ----------------------------------------
+        // ----------------------------------------
+        // UNIQUE FILE NAME
+        // ----------------------------------------
 
-      const fileName =
-        `Candidature_${documentDate}_${timeStamp}${ext}`;
+        const fileName = `Candidature_${documentDate}_${timeStamp}${ext}`;
 
-      const finalPath =
-        path.join(
-          folderPath,
-          fileName
-        );
+        const finalPath = path.join(folderPath, fileName);
 
-      // ----------------------------------------
-      // SAVE
-      // ----------------------------------------
+        // ----------------------------------------
+        // SAVE
+        // ----------------------------------------
 
-      fs.writeFileSync(
-        finalPath,
-        file.buffer
-      );
+        fs.writeFileSync(finalPath, file.buffer);
 
-      // ----------------------------------------
-      // MONGODB FIELD
-      // ----------------------------------------
+        // ----------------------------------------
+        // MONGODB FIELD
+        // ----------------------------------------
 
-      candidate.CandidatureDocument =
-        path
+        candidate.CandidatureDocument = path
           .join(
             "/Documents",
             candidate.EnrolmentNumber,
             "Candidature",
-            fileName
+            fileName,
           )
-          .replace(
-            /\\/g,
-            "/"
-          );
-    }
+          .replace(/\\/g, "/");
+      }
 
-    // ========================================================
-    // MONGODB
-    // ========================================================
+      // ========================================================
+      // MONGODB
+      // ========================================================
 
-    const client =
-      new MongoClient(URL);
+      const client = new MongoClient(URL);
 
-    await client.connect();
+      await client.connect();
 
-    try {
+      try {
+        const database = client.db("NepUG");
 
-      const database =
-        client.db("NepUG");
-
-      const collection =
-        database.collection(
-          labelMap[
-            candidate.PRG_CODE
-          ] + "_PROFILE"
+        const collection = database.collection(
+          labelMap[candidate.PRG_CODE] + "_PROFILE",
         );
 
-      // ======================================================
-      // OLD RECORD INACTIVE
-      // ======================================================
+        // ======================================================
+        // OLD RECORD INACTIVE
+        // ======================================================
 
-      await collection.updateOne(
+        await collection.updateOne(
+          {
+            EnrolmentNumber: candidate.EnrolmentNumber,
 
-        {
-          EnrolmentNumber:
-            candidate.EnrolmentNumber,
-
-          PDF: "PDF",
-        },
-
-        {
-          $set: {
-            PDF: "---",
+            PDF: "PDF",
           },
-        }
 
-      );
+          {
+            $set: {
+              PDF: "---",
+            },
+          },
+        );
 
-      // ======================================================
-      // NEW RECORD
-      // ======================================================
+        // ======================================================
+        // NEW RECORD
+        // ======================================================
 
-      candidate.PDF = "PDF";
+        candidate.PDF = "PDF";
 
-      candidate.DateOfModification =
-        createdDate;
+        candidate.DateOfModification = createdDate;
 
-      // ======================================================
-      // INSERT NEW RECORD
-      // ======================================================
+        // ======================================================
+        // INSERT NEW RECORD
+        // ======================================================
 
-      await collection.insertOne(
-        candidate
-      );
+        await collection.insertOne(candidate);
+      } finally {
+        await client.close();
+      }
 
-    } finally {
+      // ========================================================
+      // SUCCESS
+      // ========================================================
 
-      await client.close();
+      res.send({
+        status: "success",
 
+        message: "Profile Updated Successfully",
+      });
+    } catch (error) {
+      console.error("updateProfile error:", error);
+
+      res.status(500).send({
+        status: "failed",
+
+        message: error.message || "Internal Server Error",
+      });
     }
-
-    // ========================================================
-    // SUCCESS
-    // ========================================================
-
-    res.send({
-
-      status: "success",
-
-      message:
-        "Profile Updated Successfully",
-
-    });
-
-  } catch (error) {
-
-    console.error(
-      "updateProfile error:",
-      error
-    );
-
-    res.status(500).send({
-
-      status: "failed",
-
-      message:
-        error.message ||
-        "Internal Server Error",
-
-    });
-  }
-};
-
-
-
+  };
 
   static getAttendanceNep = async (req, res) => {
     const myobj = req.body;
@@ -5427,12 +5315,14 @@ static updateProfile = async (req, res) => {
       .db("NepUG")
       .collection(myobj.sem.toString().slice(0, 3) + "_PROFILE")
       .find({
-        Session: myobj.session,
+        // Session: myobj.session,
         PDF: "PDF",
         Candidature: "Active",
         Unit: myobj.unit,
       })
       .toArray();
+
+    // console.log("Profile", ProfileData)
 
     const RollData = await client
       .db("NepUG")
@@ -5453,17 +5343,33 @@ static updateProfile = async (req, res) => {
       )
       .toArray();
 
+    // console.log("Roll Data ", RollData)
+
     const FinalData = ProfileData.map((profile) => {
       const rollInfo = RollData.find(
         (roll) => roll.EnrolmentNumber === profile.EnrolmentNumber,
       );
+
+      // RollData EnrolmentNumber Not Found
+      if (!rollInfo) {
+        // console.log(
+        //   "❌ Roll Data नहीं मिला, record skipped:",
+        //   profile.EnrolmentNumber
+        // );
+
+        return null;
+      }
+
+      // console.log("✅ Roll Data:", rollInfo);
 
       return {
         PRG_CODE: profile.PRG_CODE,
         ProgrameName: profile.ProgrameName,
         YearOfAdmission: profile.YearOfAdmission,
         EnrolmentNumber: profile.EnrolmentNumber,
-        RollNumber: rollInfo ? rollInfo.RollNumber : "NA",
+
+        RollNumber: rollInfo.RollNumber,
+
         Name: profile.Name,
         FatherName: profile.FatherName,
         MotherName: profile.MotherName,
@@ -5471,14 +5377,17 @@ static updateProfile = async (req, res) => {
         Candidature: profile.Candidature,
         Session: profile.Session,
         Unit: profile.Unit,
+
         Major1: rollInfo.MajorDiscipline1,
         Major2: rollInfo.MajorDiscipline2,
+
         ...(myobj.PRG === "PRE008" && {
-          Major3: rollInfo?.MajorDiscipline3 ?? "NA",
+          Major3: rollInfo.MajorDiscipline3 ?? "NA",
         }),
+
         Minor: rollInfo.MinorDiscipline,
       };
-    });
+    }).filter((profile) => profile !== null);
 
     // console.log("Final Data", FinalData);
 
