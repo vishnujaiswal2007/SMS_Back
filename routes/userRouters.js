@@ -45,6 +45,7 @@ router.post(`/getPapers`, userController.getPapers)
 router.post(`/getDiscipline`, userController.getDiscipline)
 router.post(`/getAllDiscipline`, userController.getAllDescipline)
 router.post('/makeTranscript', userController.makeTranscript)
+router.get('/Photo/:program/:year/:enrolment.jpg', userController.getPhoto);
 
 
 

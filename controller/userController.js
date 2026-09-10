@@ -12,6 +12,7 @@ import transporter from "../config/emailconfig.js";
 import * as XLSX from "xlsx";
 import fs from "fs";
 import path from "path";
+import sharp from "sharp";
 
 class userController {
   static userRegistration = async (req, res) => {
@@ -5844,6 +5845,80 @@ class userController {
       status: "success",
       message: "Nep Marksheet API is working fine",
     });
+  };
+
+  //================================
+  //Resize photo for attandance PDF
+  //=================================
+
+  static getPhoto = async (req, res) => {
+    try {
+      // ==========================================
+      // 1. URL से parameters प्राप्त करें
+      // ==========================================
+
+      let { program, year, enrolment } = req.params;
+
+      // URL encoded values को वापस normal text में बदलें
+      program = decodeURIComponent(program);
+      year = decodeURIComponent(year);
+      enrolment = decodeURIComponent(enrolment).toUpperCase();
+
+      // ==========================================
+      // 2. Original Photo का पूरा path
+      // ==========================================
+
+      const photoPath = path.join(
+        "/media/acc_inc/B/SMS/Photo",
+        program,
+        year,
+        `${enrolment}.jpg`,
+      );
+
+      // ==========================================
+      // 3. Sharp से photo पढ़कर resize करें
+      // ==========================================
+
+      const smallPhoto = await sharp(photoPath, {
+        failOn: "none",
+      })
+        .resize({
+          width: 300,
+          height: 300,
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .jpeg({
+          quality: 70,
+          mozjpeg: true,
+        })
+        .toBuffer();
+
+      // ==========================================
+      // 4. Browser को बताएं कि यह JPEG image है
+      // ==========================================
+
+      res.set({
+        "Content-Type": "image/jpeg",
+
+        // Browser को थोड़ी देर cache करने दें
+        "Cache-Control": "public, max-age=3600",
+      });
+
+      // ==========================================
+      // 5. Resized photo browser को भेजें
+      // ==========================================
+
+      return res.send(smallPhoto);
+    } catch (error) {
+      // ==========================================
+      // 6. Error handling
+      // ==========================================
+
+      console.error("Photo Error:", error);
+
+      return res.status(404).send("Photo not found");
+    }
   };
 }
 
