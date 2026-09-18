@@ -45,7 +45,7 @@ router.post(`/getPapers`, userController.getPapers)
 router.post(`/getDiscipline`, userController.getDiscipline)
 router.post(`/getAllDiscipline`, userController.getAllDescipline)
 router.post('/makeTranscript', userController.makeTranscript)
-
+router.post('/getCbcsPgProfile/:type', userController.getCbscPgProfile)
 
 
 //Private Routers
@@ -62,11 +62,7 @@ router.post('/modifyMarks', userController.ModifyNepMarks)
 router.use('/subjectModify', userController.SubjectModify)
 router.post('/getProfile', userController.getProfile)
 // router.post('/updateProfile', upload.fields([{ name: 'Candidature', maxCount: 1 }]), userController.updateProfile)
-router.post(
-
-  '/updateProfile',
-
-  upload.fields([
+router.post('/updateProfile', upload.fields([
 
     // Candidature Status Document
     { name: 'Candidature', maxCount: 1 },

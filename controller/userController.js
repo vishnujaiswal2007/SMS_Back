@@ -13,6 +13,7 @@ import * as XLSX from "xlsx";
 import fs from "fs";
 import path from "path";
 import sharp from "sharp";
+import { type } from "os";
 
 class userController {
   static userRegistration = async (req, res) => {
@@ -5847,7 +5848,69 @@ class userController {
     });
   };
 
-  
+  // ============================================================
+  //CBSC PG Profile
+  // ============================================================
+
+  static getCbscPgProfile = async (req, res) => {
+    const myobj = req.body;
+
+    // console.log("Request Body:", myobj);
+    // console.log("Type:", req.params.type);
+
+    const client = new MongoClient(URL);
+
+    try {
+      await client.connect();
+
+      // console.log("MongoDB Connected");
+
+      const query = {
+        PRG_CODE: myobj.Discipline,
+        Session: myobj.session,
+        CENumber: myobj.CeN,
+        PDF: "PDF",
+      };
+
+      const StudentProfile = await client
+        .db(req.params.type)
+        .collection("Profile")
+        .findOne(query,{projection:{
+          _id: 0,
+        }});
+
+      // console.log(
+      //   "Student Profile Count:",
+      //   StudentProfile.length
+      // );
+
+      if (StudentProfile === null) {
+        // console.log("Student NotFound");
+
+        return res.status(404).json({
+          status: "Fail",
+          message: "Student Not Found...",
+        });
+      }
+
+      // console.log("Student Profile:", StudentProfile);
+
+      return res.status(200).json({
+        status: "success",
+        message: "Profile Fetched Successfully",
+        data: StudentProfile,
+      });
+    } catch (error) {
+      // console.log("Error:", error);
+
+      return res.status(500).json({
+        status: "Fail",
+        message: "Server Error",
+      });
+    } finally {
+      await client.close();
+    }
+  };
 }
 
 export default userController;
