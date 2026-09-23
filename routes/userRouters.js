@@ -14,7 +14,7 @@ router.use('/getverify', checkUserAuth)
 router.use('/getdetails', checkUserAuth)
 router.use('/getdetailsNep', checkUserAuth)
 router.use('/updateRecord', checkUserAuth)
-router.use('CbcsUgProfile', checkUserAuth)
+router.use('/CbcsUgProfile', checkUserAuth)
 router.use('/AdmissionNepUG', checkUserAuth)
 router.use('/upLoadMarks',checkUserAuth)
 router.use('/makeResult', checkUserAuth)
@@ -26,6 +26,7 @@ router.use('/getAttendanceNep', checkUserAuth)
 router.use('/getNepUnits', checkUserAuth)
 router.use('/marksheetNEP', checkUserAuth)
 router.use('/registeredStudentNep', checkUserAuth)
+router.use(`/saveProfileAndDocumentsCBCS/:type`, checkUserAuth)
 
 
 
@@ -82,4 +83,8 @@ router.post('/getAttendanceNep', userController.getAttendanceNep)
 router.post('/getNepUnits', userController.getNEPUnits) 
 router.post('/marksheetNEP', userController.getNepMarksheet)
 router.post('/registeredStudentNep', upload.single("file"), userController.RegisteredStudentNEP)
+router.post(`/saveProfileAndDocumentsCBCS/:type`, upload.array("documents"), userController.saveProfileAndDocumentsCBCS)
+
+
+
 export default router

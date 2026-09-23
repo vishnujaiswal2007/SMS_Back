@@ -5875,9 +5875,11 @@ class userController {
       const StudentProfile = await client
         .db(req.params.type)
         .collection("Profile")
-        .findOne(query,{projection:{
-          _id: 0,
-        }});
+        .findOne(query, {
+          projection: {
+            _id: 0,
+          },
+        });
 
       // console.log(
       //   "Student Profile Count:",
@@ -5909,6 +5911,84 @@ class userController {
       });
     } finally {
       await client.close();
+    }
+  };
+
+  // ============================================================
+  // Save Profile and Documents CBCS
+  // ============================================================
+
+  static saveProfileAndDocumentsCBCS = async (req, res) => {
+    try {
+      const type = req.params.type;
+
+      // Profile आया है या नहीं?
+      const hasProfile = !!req.body.candidate;
+
+      // Documents आए हैं या नहीं?
+      const hasDocuments = req.files && req.files.length > 0;
+
+      // 1. कुछ भी नहीं आया
+      if (!hasProfile && !hasDocuments) {
+        return res.status(400).json({
+          status: "error",
+          message: "Nothing to save",
+        });
+      }
+
+      // 2. केवल Profile
+      if (hasProfile && !hasDocuments) {
+        const myobj = JSON.parse(req.body.candidate);
+
+        console.log("Only Profile");
+        console.log("Type:", type);
+        console.log("Profile:", myobj);
+
+        // यहाँ बाद में MongoDB में Profile update करेंगे
+
+        return res.status(200).json({
+          status: "success",
+          message: "Profile Saved Successfully",
+        });
+      }
+
+      // 3. केवल Documents
+      if (!hasProfile && hasDocuments) {
+        console.log("Only Documents");
+        console.log("Type:", type);
+        console.log("Files:", req.files);
+
+        // यहाँ बाद में Documents save करेंगे
+
+        return res.status(200).json({
+          status: "success",
+          message: "Documents Saved Successfully",
+        });
+      }
+
+      // 4. Profile + Documents
+      if (hasProfile && hasDocuments) {
+        const myobj = JSON.parse(req.body.candidate);
+
+        console.log("Profile + Documents");
+        console.log("Type:", type);
+        console.log("Profile:", myobj);
+        console.log("Files:", req.files);
+
+        // यहाँ बाद में Profile और Documents दोनों save करेंगे
+
+        return res.status(200).json({
+          status: "success",
+          message: "Profile and Documents Saved Successfully",
+        });
+      }
+    } catch (error) {
+      console.error("saveProfileAndDocumentsCBCS Error:", error);
+
+      return res.status(500).json({
+        status: "error",
+        message: "Something went wrong",
+      });
     }
   };
 }
