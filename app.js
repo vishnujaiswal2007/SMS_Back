@@ -4,6 +4,7 @@ import express from 'express'
 var app = express()
 import userRouters from './routes/userRouters.js'
 import cors from 'cors'
+import path from 'path'
 
 app.use(
     cors({
@@ -40,6 +41,52 @@ app.use(
 app.use(
   "/Documents",
   express.static("/media/acc_inc/B/SMS/Documents")
+);
+
+app.use(
+  "/:type/Documents",
+  (req, res, next) => {
+    const type = req.params.type;
+
+    const allowedTypes = ["SST"];
+
+    if (!allowedTypes.includes(type)) {
+      return res.status(404).send("Invalid document type");
+    }
+
+    const documentFolder = path.join(
+      "/media/acc_inc/B/SMS",
+      type,
+      "Documents"
+    );
+
+    // console.log("DocumentFolder", documentFolder)
+
+    express.static(documentFolder)(req, res, next);
+  }
+);
+
+app.use(
+  "/:type/Photo",
+  (req, res, next) => {
+    const type = req.params.type;
+
+    const allowedTypes = ["SST"];
+
+    if (!allowedTypes.includes(type)) {
+      return res.status(404).send("Invalid document type");
+    }
+
+    const documentFolder = path.join(
+      "/media/acc_inc/B/SMS",
+      type,
+      "Photo"
+    );
+
+    // console.log("DocumentFolder", documentFolder)
+
+    express.static(documentFolder)(req, res, next);
+  }
 );
 
 //server creation and listening 

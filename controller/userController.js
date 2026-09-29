@@ -5922,13 +5922,17 @@ class userController {
     try {
       const type = req.params.type;
 
-      // Profile आया है या नहीं?
-      const hasProfile = !!req.body.candidate;
+      // =========================================
+      // 1. Profile / Documents aaye hain ya nahi
+      // =========================================
 
-      // Documents आए हैं या नहीं?
+      const hasProfile = !!req.body.candidate;
       const hasDocuments = req.files && req.files.length > 0;
 
-      // 1. कुछ भी नहीं आया
+      // =========================================
+      // 2. Kuch bhi nahi aaya
+      // =========================================
+
       if (!hasProfile && !hasDocuments) {
         return res.status(400).json({
           status: "error",
@@ -5936,51 +5940,287 @@ class userController {
         });
       }
 
-      // 2. केवल Profile
-      if (hasProfile && !hasDocuments) {
-        const myobj = JSON.parse(req.body.candidate);
+      // =========================================
+      // 3. Today's Date
+      // =========================================
 
-        console.log("Only Profile");
-        console.log("Type:", type);
-        console.log("Profile:", myobj);
+      const today = new Date();
 
-        // यहाँ बाद में MongoDB में Profile update करेंगे
+      const dd = String(today.getDate()).padStart(2, "0");
+      const mm = String(today.getMonth() + 1).padStart(2, "0");
+      const yyyy = today.getFullYear();
 
-        return res.status(200).json({
-          status: "success",
-          message: "Profile Saved Successfully",
-        });
-      }
+      const todayDate = `${dd}/${mm}/${yyyy}`;
 
-      // 3. केवल Documents
-      if (!hasProfile && hasDocuments) {
-        console.log("Only Documents");
-        console.log("Type:", type);
-        console.log("Files:", req.files);
+      // =========================================
+      // 4. MongoDB Connection
+      // =========================================
 
-        // यहाँ बाद में Documents save करेंगे
+      const client = new MongoClient(URL);
 
-        return res.status(200).json({
-          status: "success",
-          message: "Documents Saved Successfully",
-        });
-      }
+      try {
+        await client.connect();
 
-      // 4. Profile + Documents
-      if (hasProfile && hasDocuments) {
-        const myobj = JSON.parse(req.body.candidate);
+        const db = client.db(type);
+        const collection = db.collection("Profile");
 
-        console.log("Profile + Documents");
-        console.log("Type:", type);
-        console.log("Profile:", myobj);
-        console.log("Files:", req.files);
+        // =========================================================
+        // 5. केवल Profile
+        // =========================================================
 
-        // यहाँ बाद में Profile और Documents दोनों save करेंगे
+        if (hasProfile && !hasDocuments) {
+          const myobj = JSON.parse(req.body.candidate);
 
-        return res.status(200).json({
-          status: "success",
-          message: "Profile and Documents Saved Successfully",
-        });
+          const CENumber = myobj.CENumber;
+
+          // --------------------------------
+          // Old Active Profile find
+          // --------------------------------
+
+          const oldProfile = await collection.findOne({
+            CENumber: CENumber,
+            PDF: "PDF",
+          });
+
+          // --------------------------------
+          // Old Documents preserve
+          // --------------------------------
+
+          const oldDocuments = oldProfile?.Documents || [];
+
+          // --------------------------------
+          // Old Profile inactive
+          // --------------------------------
+
+          await collection.updateOne(
+            {
+              CENumber: CENumber,
+              PDF: "PDF",
+            },
+            {
+              $set: {
+                PDF: "---",
+              },
+            },
+          );
+
+          // --------------------------------
+          // New Profile
+          // --------------------------------
+
+          const newProfile = {
+            ...myobj,
+
+            PDF: "PDF",
+
+            DateOfModification: todayDate,
+
+            Documents: oldDocuments,
+          };
+
+          // --------------------------------
+          // Insert New Profile
+          // --------------------------------
+
+          await collection.insertOne(newProfile);
+
+          return res.status(200).json({
+            status: "success",
+            message: "Profile Saved Successfully",
+          });
+        }
+
+        // =========================================================
+        // 6. केवल Documents
+        // =========================================================
+
+        if (!hasProfile && hasDocuments) {
+          const CENumber = req.body.CENumber;
+
+          // --------------------------------
+          // Document Folder
+          // --------------------------------
+
+          const documentFolder = path.join(
+            `/media/acc_inc/B/SMS/${type}/Document`,
+            CENumber,
+          );
+
+          // --------------------------------
+          // Folder Create
+          // --------------------------------
+
+          await fs.promises.mkdir(documentFolder, {
+            recursive: true,
+          });
+
+          // --------------------------------
+          // New Documents Array
+          // --------------------------------
+
+          const documents = [];
+
+          // --------------------------------
+          // Files Save
+          // --------------------------------
+
+          for (const file of req.files) {
+            const fileName = file.originalname;
+
+            const physicalFilePath = path.join(documentFolder, fileName);
+
+            // Actual file server par save
+            await fs.promises.writeFile(physicalFilePath, file.buffer);
+
+            // Browser ke liye relative URL
+            const filePath = `/Documents/${CENumber}/${fileName}`;
+
+            documents.push({
+              FileName: fileName,
+              FilePath: filePath,
+              DateOfUpload: todayDate,
+            });
+          }
+
+          // --------------------------------
+          // Existing Profile mein
+          // New Documents add
+          // --------------------------------
+
+          await collection.updateOne(
+            {
+              CENumber: CENumber,
+              PDF: "PDF",
+            },
+            {
+              $push: {
+                Documents: {
+                  $each: documents,
+                },
+              },
+            },
+          );
+
+          return res.status(200).json({
+            status: "success",
+            message: "Documents Saved Successfully",
+          });
+        }
+
+        // =========================================================
+        // 7. Profile + Documents
+        // =========================================================
+
+        if (hasProfile && hasDocuments) {
+          const myobj = JSON.parse(req.body.candidate);
+
+          const CENumber = myobj.CENumber;
+
+          // --------------------------------
+          // Old Active Profile find
+          // --------------------------------
+
+          const oldProfile = await collection.findOne({
+            CENumber: CENumber,
+            PDF: "PDF",
+          });
+
+          // --------------------------------
+          // Old Documents preserve
+          // --------------------------------
+
+          const oldDocuments = oldProfile?.Documents || [];
+
+          // --------------------------------
+          // Old Profile inactive
+          // --------------------------------
+
+          await collection.updateOne(
+            {
+              CENumber: CENumber,
+              PDF: "PDF",
+            },
+            {
+              $set: {
+                PDF: "---",
+              },
+            },
+          );
+
+          // --------------------------------
+          // Document Folder
+          // --------------------------------
+
+          const documentFolder = path.join(
+            `/media/acc_inc/B/SMS/${type}/Document`,
+            CENumber,
+          );
+
+          // --------------------------------
+          // Folder Create
+          // --------------------------------
+
+          await fs.promises.mkdir(documentFolder, {
+            recursive: true,
+          });
+
+          // --------------------------------
+          // New Documents
+          // --------------------------------
+
+          const newDocuments = [];
+
+          for (const file of req.files) {
+            const fileName = file.originalname;
+
+            const physicalFilePath = path.join(documentFolder, fileName);
+
+            // Actual file server par save
+            await fs.promises.writeFile(physicalFilePath, file.buffer);
+
+            // Browser ke liye relative URL
+            const filePath = `/Documents/${CENumber}/${fileName}`;
+
+            newDocuments.push({
+              FileName: fileName,
+              FilePath: filePath,
+              DateOfUpload: todayDate,
+            });
+          }
+
+          // --------------------------------
+          // Old + New Documents
+          // --------------------------------
+
+          const documents = [...oldDocuments, ...newDocuments];
+
+          // --------------------------------
+          // New Profile
+          // --------------------------------
+
+          const newProfile = {
+            ...myobj,
+
+            PDF: "PDF",
+
+            DateOfModification: todayDate,
+
+            Documents: documents,
+          };
+
+          // --------------------------------
+          // Insert New Profile
+          // --------------------------------
+
+          await collection.insertOne(newProfile);
+
+          return res.status(200).json({
+            status: "success",
+            message: "Profile and Documents Saved Successfully",
+          });
+        }
+      } finally {
+        await client.close();
       }
     } catch (error) {
       console.error("saveProfileAndDocumentsCBCS Error:", error);
