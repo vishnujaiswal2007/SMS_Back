@@ -67,11 +67,13 @@ app.use(
 );
 
 app.use(
-  "/:type/Photo",
+  "/:type/Photo/:year",
   (req, res, next) => {
-    const type = req.params.type;
 
-    const allowedTypes = ["SST"];
+    const type = req.params.type;
+    const year = req.params.year;
+
+    const allowedTypes = ["SST", "Bachelor of Commerce", "Bachelor of Arts", "Bachelor of Science"];
 
     if (!allowedTypes.includes(type)) {
       return res.status(404).send("Invalid document type");
@@ -80,12 +82,22 @@ app.use(
     const documentFolder = path.join(
       "/media/acc_inc/B/SMS",
       type,
-      "Photo"
+      "Photo",
+      year
     );
 
-    // console.log("DocumentFolder", documentFolder)
+    const staticMiddleware = express.static(documentFolder);
 
-    express.static(documentFolder)(req, res, next);
+    staticMiddleware(req, res, () => {
+
+      const noImagePath = path.join(
+        "/media/acc_inc/B/SMS",
+        "NoImage.jpg"
+      );
+
+      res.sendFile(noImagePath);
+
+    });
   }
 );
 
