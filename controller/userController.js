@@ -4851,35 +4851,183 @@ class userController {
     });
   };
 
+  // // ============================================================
+  // // CONTROLLER
+  // // ============================================================
+
   // static updateProfile = async (req, res) => {
-  //   // -----------------------------
+  //   // ==========================================================
   //   // BASIC DATE INFO
-  //   // -----------------------------
+  //   // ==========================================================
+
   //   const date = new Date();
+
   //   const day = String(date.getDate()).padStart(2, "0");
+
   //   const month = String(date.getMonth() + 1).padStart(2, "0");
+
   //   const year = date.getFullYear();
+
   //   const documentDate = `${day}_${month}_${year}`;
+
   //   const createdDate = `${day}/${month}/${year}`;
 
-  //   // STRING → OBJECT
-
-  //   const candidate = JSON.parse(req.body.candidate);
-
-  //   delete candidate._id;
-
-  //   Object.keys(candidate).forEach((key) => {
-  //     if (key.startsWith("RN")) {
-  //       delete candidate[key];
-  //     }
-  //   });
+  //   const timeStamp = `${date.getHours()}_${date.getMinutes()}_${date.getSeconds()}_${date.getMilliseconds()}`;
 
   //   try {
+  //     // ========================================================
+  //     // STRING -> OBJECT
+  //     // ========================================================
+
+  //     const candidate = JSON.parse(req.body.candidate);
+
+  //     delete candidate._id;
+
+  //     Object.keys(candidate).forEach((key) => {
+  //       if (key.startsWith("RN")) {
+  //         delete candidate[key];
+  //       }
+  //     });
+
+  //     // ========================================================
+  //     // PROGRAM LABEL
+  //     // ========================================================
+
   //     const labelMap = {
   //       PRE006: "BAN",
   //       PRE007: "BSN",
   //       PRE008: "BCN",
   //     };
+
+  //     // ========================================================
+  //     // PHOTO
+  //     // ========================================================
+
+  //     if (req.files && req.files.photo && req.files.photo.length > 0) {
+  //       const file = req.files.photo[0];
+
+  //       // ----------------------------------------
+  //       // PHOTO FOLDER
+  //       // ----------------------------------------
+
+  //       const photoFolder = path.join(
+  //         "/media/acc_inc/B/SMS/Photo",
+
+  //         String(candidate.ProgrameName),
+
+  //         String(candidate.YearOfAdmission),
+  //       );
+
+  //       fs.mkdirSync(photoFolder, {
+  //         recursive: true,
+  //       });
+
+  //       // ----------------------------------------
+  //       // FIXED PHOTO NAME
+  //       // ----------------------------------------
+
+  //       const photoFileName = candidate.EnrolmentNumber.toUpperCase() + ".jpg";
+
+  //       const finalPhotoPath = path.join(photoFolder, photoFileName);
+
+  //       // ----------------------------------------
+  //       // SAVE PHOTO
+  //       // ----------------------------------------
+
+  //       fs.writeFileSync(finalPhotoPath, file.buffer);
+  //     }
+
+  //     // ========================================================
+  //     // PHOTO SUPPORTING DOCUMENT
+  //     // ========================================================
+  //     //
+  //     // IMPORTANT:
+  //     //
+  //     // This is completely separate from
+  //     // CandidatureDocument.
+  //     //
+  //     // Frontend field:
+  //     //
+  //     // PhotoSupportingDocument
+  //     //
+  //     // MongoDB field:
+  //     //
+  //     // candidate.PhotoSupportingDocument
+  //     //
+  //     // ========================================================
+
+  //     if (
+  //       req.files &&
+  //       req.files.PhotoSupportingDocument &&
+  //       req.files.PhotoSupportingDocument.length > 0
+  //     ) {
+  //       const file = req.files.PhotoSupportingDocument[0];
+
+  //       // ----------------------------------------
+  //       // PHOTO DOCUMENT FOLDER
+  //       // ----------------------------------------
+
+  //       const folderPath = path.join(
+  //         "/media/acc_inc/B/SMS/Documents",
+
+  //         candidate.EnrolmentNumber,
+
+  //         "PhotoChange",
+  //       );
+
+  //       fs.mkdirSync(folderPath, {
+  //         recursive: true,
+  //       });
+
+  //       // ----------------------------------------
+  //       // ORIGINAL EXTENSION
+  //       // ----------------------------------------
+
+  //       const ext = path.extname(file.originalname).toLowerCase();
+
+  //       // ----------------------------------------
+  //       // UNIQUE FILE NAME
+  //       // ----------------------------------------
+
+  //       const fileName = `PhotoChange_${documentDate}_${timeStamp}${ext}`;
+
+  //       const finalPath = path.join(folderPath, fileName);
+
+  //       // ----------------------------------------
+  //       // SAVE
+  //       // ----------------------------------------
+
+  //       fs.writeFileSync(finalPath, file.buffer);
+
+  //       // ----------------------------------------
+  //       // MONGODB FIELD
+  //       // ----------------------------------------
+
+  //       candidate.PhotoSupportingDocument = path
+  //         .join(
+  //           "/Documents",
+  //           candidate.EnrolmentNumber,
+  //           "PhotoChange",
+  //           fileName,
+  //         )
+  //         .replace(/\\/g, "/");
+  //     }
+
+  //     // ========================================================
+  //     // CANDIDATURE STATUS DOCUMENT
+  //     // ========================================================
+  //     //
+  //     // This remains completely separate.
+  //     //
+  //     // Frontend field:
+  //     //
+  //     // Candidature
+  //     //
+  //     // MongoDB field:
+  //     //
+  //     // CandidatureDocument
+  //     //
+  //     // ========================================================
 
   //     if (
   //       req.files &&
@@ -4888,51 +5036,45 @@ class userController {
   //     ) {
   //       const file = req.files.Candidature[0];
 
-  //       // =====================================
-  //       // CUSTOM FOLDER
-  //       // =====================================
+  //       // ----------------------------------------
+  //       // CANDIDATURE FOLDER
+  //       // ----------------------------------------
 
   //       const folderPath = path.join(
   //         "/media/acc_inc/B/SMS/Documents",
+
   //         candidate.EnrolmentNumber,
+
   //         "Candidature",
   //       );
-
-  //       // =====================================
-  //       // CREATE FOLDER IF NOT EXISTS
-  //       // =====================================
 
   //       fs.mkdirSync(folderPath, {
   //         recursive: true,
   //       });
 
-  //       // =====================================
-  //       // FILE EXTENSION
-  //       // =====================================
+  //       // ----------------------------------------
+  //       // ORIGINAL EXTENSION
+  //       // ----------------------------------------
 
-  //       const ext = path.extname(file.originalname);
+  //       const ext = path.extname(file.originalname).toLowerCase();
 
-  //       // =====================================
-  //       // CUSTOM FILE NAME
-  //       // =====================================
+  //       // ----------------------------------------
+  //       // UNIQUE FILE NAME
+  //       // ----------------------------------------
 
-  //       const fileName = `Dated_${documentDate}${ext}`;
-
-  //       // =====================================
-  //       // FINAL ABSOLUTE PATH
-  //       // =====================================
+  //       const fileName = `Candidature_${documentDate}_${timeStamp}${ext}`;
 
   //       const finalPath = path.join(folderPath, fileName);
 
-  //       // =====================================
-  //       // SAVE FILE
-  //       // =====================================
+  //       // ----------------------------------------
+  //       // SAVE
+  //       // ----------------------------------------
 
   //       fs.writeFileSync(finalPath, file.buffer);
 
-  //       // =====================================
-  //       // SAVE RELATIVE PATH IN DATABASE
-  //       // =====================================
+  //       // ----------------------------------------
+  //       // MONGODB FIELD
+  //       // ----------------------------------------
 
   //       candidate.CandidatureDocument = path
   //         .join(
@@ -4944,96 +5086,141 @@ class userController {
   //         .replace(/\\/g, "/");
   //     }
 
+  //     // ========================================================
+  //     // MONGODB
+  //     // ========================================================
+
   //     const client = new MongoClient(URL);
 
   //     await client.connect();
 
-  //     const database = client.db("NepUG");
+  //     try {
+  //       const database = client.db("NepUG");
 
-  //     const collection = database.collection(
-  //       labelMap[candidate.PRG_CODE] + "_PROFILE",
-  //     );
+  //       const collection = database.collection(
+  //         labelMap[candidate.PRG_CODE] + "_PROFILE",
+  //       );
 
-  //     // =====================================
-  //     // OLD RECORD INACTIVE
-  //     // =====================================
+  //       // ======================================================
+  //       // OLD RECORD INACTIVE
+  //       // ======================================================
 
-  //     await collection.updateOne(
-  //       {
-  //         EnrolmentNumber: candidate.EnrolmentNumber,
-  //         PDF: "PDF",
-  //       },
+  //       await collection.updateOne(
+  //         {
+  //           EnrolmentNumber: candidate.EnrolmentNumber,
 
-  //       {
-  //         $set: {
-  //           PDF: "---",
+  //           PDF: "PDF",
   //         },
-  //       },
-  //     );
 
-  //     // =====================================
-  //     // NEW RECORD SAVE
-  //     // =====================================
+  //         {
+  //           $set: {
+  //             PDF: "---",
+  //           },
+  //         },
+  //       );
 
-  //     candidate.PDF = "PDF";
+  //       // ======================================================
+  //       // NEW RECORD
+  //       // ======================================================
 
-  //     candidate.DateOfModification = createdDate;
+  //       candidate.PDF = "PDF";
 
-  //     await collection.insertOne(candidate);
+  //       candidate.DateOfModification = createdDate;
 
-  //     // =====================================
+  //       // ======================================================
+  //       // INSERT NEW RECORD
+  //       // ======================================================
+
+  //       await collection.insertOne(candidate);
+  //     } finally {
+  //       await client.close();
+  //     }
+
+  //     // ========================================================
+  //     // SUCCESS
+  //     // ========================================================
 
   //     res.send({
   //       status: "success",
+
   //       message: "Profile Updated Successfully",
   //     });
   //   } catch (error) {
-  //     console.log(error);
+  //     console.error("updateProfile error:", error);
 
   //     res.status(500).send({
   //       status: "failed",
-  //       message: "Internal Server Error",
+
+  //       message: error.message || "Internal Server Error",
   //     });
   //   }
   // };
 
   // ============================================================
-  // CONTROLLER
+  // Update Profile And Documents
   // ============================================================
 
-  static updateProfile = async (req, res) => {
+  static updateProfileAndDocuments = async (req, res) => {
     // ==========================================================
-    // BASIC DATE INFO
+    // BASIC DATE / TIME
     // ==========================================================
 
     const date = new Date();
 
     const day = String(date.getDate()).padStart(2, "0");
-
     const month = String(date.getMonth() + 1).padStart(2, "0");
-
     const year = date.getFullYear();
 
     const documentDate = `${day}_${month}_${year}`;
-
     const createdDate = `${day}/${month}/${year}`;
 
-    const timeStamp = `${date.getHours()}_${date.getMinutes()}_${date.getSeconds()}_${date.getMilliseconds()}`;
+    const timeStamp =
+      `${date.getHours()}_` +
+      `${date.getMinutes()}_` +
+      `${date.getSeconds()}_` +
+      `${date.getMilliseconds()}`;
+
+    // ==========================================================
+    // TYPE
+    // ==========================================================
+
+    const type = req.params.type;
+
+
+    // ==========================================================
+    // ALLOWED TYPES
+    // ==========================================================
+
+    const allowedTypes = ["SST", "Bachelor of Science", "Bachelor of Commerce", "Bachelor of Arts"];
+
+    if (!allowedTypes.includes(type)) {
+      return res.status(200).send({
+        status: "failed",
+        message: "Invalid profile type",
+      });
+    }
 
     try {
       // ========================================================
-      // STRING -> OBJECT
+      // READ FORM DATA
       // ========================================================
 
       const candidate = JSON.parse(req.body.candidate);
 
-      delete candidate._id;
+      const originalCandidate = JSON.parse(req.body.originalCandidate || "{}");
 
-      Object.keys(candidate).forEach((key) => {
-        if (key.startsWith("RN")) {
-          delete candidate[key];
-        }
-      });
+      const documentInfo = JSON.parse(req.body.documentInfo || "[]");
+
+      // ========================================================
+      // BASIC VALIDATION
+      // ========================================================
+
+      if (!candidate.EnrolmentNumber) {
+        return res.status(200).send({
+          status: "failed",
+          message: "EnrolmentNumber is required.",
+        });
+      }
 
       // ========================================================
       // PROGRAM LABEL
@@ -5045,195 +5232,46 @@ class userController {
         PRE008: "BCN",
       };
 
-      // ========================================================
-      // PHOTO
-      // ========================================================
+      const profileLabel = labelMap[candidate.PRG_CODE];
 
-      if (req.files && req.files.photo && req.files.photo.length > 0) {
-        const file = req.files.photo[0];
-
-        // ----------------------------------------
-        // PHOTO FOLDER
-        // ----------------------------------------
-
-        const photoFolder = path.join(
-          "/media/acc_inc/B/SMS/Photo",
-
-          String(candidate.ProgrameName),
-
-          String(candidate.YearOfAdmission),
-        );
-
-        fs.mkdirSync(photoFolder, {
-          recursive: true,
+      if (!profileLabel) {
+        return res.status(200).send({
+          status: "failed",
+          message:
+            "Invalid PRG_CODE. Profile collection could not be determined.",
         });
-
-        // ----------------------------------------
-        // FIXED PHOTO NAME
-        // ----------------------------------------
-
-        const photoFileName = candidate.EnrolmentNumber.toUpperCase() + ".jpg";
-
-        const finalPhotoPath = path.join(photoFolder, photoFileName);
-
-        // ----------------------------------------
-        // SAVE PHOTO
-        // ----------------------------------------
-
-        fs.writeFileSync(finalPhotoPath, file.buffer);
       }
 
       // ========================================================
-      // PHOTO SUPPORTING DOCUMENT
-      // ========================================================
-      //
-      // IMPORTANT:
-      //
-      // This is completely separate from
-      // CandidatureDocument.
-      //
-      // Frontend field:
-      //
-      // PhotoSupportingDocument
-      //
-      // MongoDB field:
-      //
-      // candidate.PhotoSupportingDocument
-      //
+      // BASIC IDENTIFICATION
       // ========================================================
 
-      if (
-        req.files &&
-        req.files.PhotoSupportingDocument &&
-        req.files.PhotoSupportingDocument.length > 0
-      ) {
-        const file = req.files.PhotoSupportingDocument[0];
+      const enrolmentNumber = String(candidate.EnrolmentNumber).toUpperCase();
 
-        // ----------------------------------------
-        // PHOTO DOCUMENT FOLDER
-        // ----------------------------------------
+      const yearOfAdmission = String(candidate.YearOfAdmission || "");
 
-        const folderPath = path.join(
-          "/media/acc_inc/B/SMS/Documents",
+      // ========================================================
+      // FILE ARRAYS
+      // ========================================================
 
-          candidate.EnrolmentNumber,
+      const photoFile = req.files?.photo?.[0] || null;
 
-          "PhotoChange",
-        );
+      const supportingFiles = req.files?.supportingDocuments || [];
 
-        fs.mkdirSync(folderPath, {
-          recursive: true,
+      // ========================================================
+      // DOCUMENT INFO / FILE COUNT VALIDATION
+      // ========================================================
+
+      if (documentInfo.length !== supportingFiles.length) {
+        return res.status(200).send({
+          status: "failed",
+          message:
+            "Supporting document information does not match uploaded files.",
         });
-
-        // ----------------------------------------
-        // ORIGINAL EXTENSION
-        // ----------------------------------------
-
-        const ext = path.extname(file.originalname).toLowerCase();
-
-        // ----------------------------------------
-        // UNIQUE FILE NAME
-        // ----------------------------------------
-
-        const fileName = `PhotoChange_${documentDate}_${timeStamp}${ext}`;
-
-        const finalPath = path.join(folderPath, fileName);
-
-        // ----------------------------------------
-        // SAVE
-        // ----------------------------------------
-
-        fs.writeFileSync(finalPath, file.buffer);
-
-        // ----------------------------------------
-        // MONGODB FIELD
-        // ----------------------------------------
-
-        candidate.PhotoSupportingDocument = path
-          .join(
-            "/Documents",
-            candidate.EnrolmentNumber,
-            "PhotoChange",
-            fileName,
-          )
-          .replace(/\\/g, "/");
       }
 
       // ========================================================
-      // CANDIDATURE STATUS DOCUMENT
-      // ========================================================
-      //
-      // This remains completely separate.
-      //
-      // Frontend field:
-      //
-      // Candidature
-      //
-      // MongoDB field:
-      //
-      // CandidatureDocument
-      //
-      // ========================================================
-
-      if (
-        req.files &&
-        req.files.Candidature &&
-        req.files.Candidature.length > 0
-      ) {
-        const file = req.files.Candidature[0];
-
-        // ----------------------------------------
-        // CANDIDATURE FOLDER
-        // ----------------------------------------
-
-        const folderPath = path.join(
-          "/media/acc_inc/B/SMS/Documents",
-
-          candidate.EnrolmentNumber,
-
-          "Candidature",
-        );
-
-        fs.mkdirSync(folderPath, {
-          recursive: true,
-        });
-
-        // ----------------------------------------
-        // ORIGINAL EXTENSION
-        // ----------------------------------------
-
-        const ext = path.extname(file.originalname).toLowerCase();
-
-        // ----------------------------------------
-        // UNIQUE FILE NAME
-        // ----------------------------------------
-
-        const fileName = `Candidature_${documentDate}_${timeStamp}${ext}`;
-
-        const finalPath = path.join(folderPath, fileName);
-
-        // ----------------------------------------
-        // SAVE
-        // ----------------------------------------
-
-        fs.writeFileSync(finalPath, file.buffer);
-
-        // ----------------------------------------
-        // MONGODB FIELD
-        // ----------------------------------------
-
-        candidate.CandidatureDocument = path
-          .join(
-            "/Documents",
-            candidate.EnrolmentNumber,
-            "Candidature",
-            fileName,
-          )
-          .replace(/\\/g, "/");
-      }
-
-      // ========================================================
-      // MONGODB
+      // MONGODB CONNECTION
       // ========================================================
 
       const client = new MongoClient(URL);
@@ -5241,66 +5279,410 @@ class userController {
       await client.connect();
 
       try {
+        // ======================================================
+        // DATABASE
+        // ======================================================
+
         const database = client.db("NepUG");
 
-        const collection = database.collection(
-          labelMap[candidate.PRG_CODE] + "_PROFILE",
-        );
+        const collection = database.collection(`${profileLabel}_PROFILE`);
 
         // ======================================================
-        // OLD RECORD INACTIVE
+        // GET OLD ACTIVE PROFILE
         // ======================================================
 
-        await collection.updateOne(
-          {
-            EnrolmentNumber: candidate.EnrolmentNumber,
+        const oldCandidate = await collection.findOne({
+          EnrolmentNumber: candidate.EnrolmentNumber,
 
-            PDF: "PDF",
-          },
-
-          {
-            $set: {
-              PDF: "---",
-            },
-          },
-        );
+          PDF: "PDF",
+        });
 
         // ======================================================
-        // NEW RECORD
+        // OLD PROFILE NOT FOUND
         // ======================================================
 
-        candidate.PDF = "PDF";
-
-        candidate.DateOfModification = createdDate;
+        if (!oldCandidate) {
+          return res.status(404).send({
+            status: "failed",
+            message: "Active profile record not found.",
+          });
+        }
 
         // ======================================================
-        // INSERT NEW RECORD
+        // CREATE NEW PROFILE FROM OLD PROFILE
+        //
+        // IMPORTANT:
+        // OLD DATA IS PRESERVED FIRST
+        // THEN FRONTEND CHANGES ARE APPLIED
         // ======================================================
 
-        await collection.insertOne(candidate);
+        const newCandidate = {
+          ...oldCandidate,
+          ...candidate,
+        };
+
+        // ======================================================
+        // REMOVE OLD MONGODB _id
+        //
+        // New record must get a NEW _id
+        // ======================================================
+
+        delete newCandidate._id;
+
+        // ======================================================
+        // PRESERVE OLD SUPPORTING DOCUMENTS
+        // ======================================================
+
+        let inheritedDocuments = [];
+
+        if (Array.isArray(oldCandidate.SupportingDocuments)) {
+          inheritedDocuments = oldCandidate.SupportingDocuments.map((doc) => ({
+            ...doc,
+          }));
+        }
+
+        // ======================================================
+        // PRESERVE OLD PHOTO SUPPORTING DOCUMENT
+        // ======================================================
+
+        let photoSupportingDocument = oldCandidate.PhotoSupportingDocument;
+
+        // ======================================================
+        // PRESERVE OLD CANDIDATURE DOCUMENT
+        // ======================================================
+
+        let candidatureDocument = oldCandidate.CandidatureDocument;
+
+        // ======================================================
+        // CANDIDATURE ACTIVE
+        //
+        // If candidature becomes Active,
+        // old candidature document should not be carried.
+        // ======================================================
+
+        if (candidate.Candidature === "Active") {
+          candidatureDocument = undefined;
+
+          delete newCandidate.CandidatureDocument;
+        }
+
+        // ======================================================
+        // SAVE NEW PHOTO
+        // ======================================================
+
+        if (photoFile) {
+          const photoFolder = path.join(
+            "/media/acc_inc/B/SMS",
+            type,
+            "Photo",
+            yearOfAdmission,
+          );
+
+          fs.mkdirSync(photoFolder, {
+            recursive: true,
+          });
+
+          // ----------------------------------------------------
+          // PHOTO NAME
+          // ----------------------------------------------------
+
+          const photoFileName = `${enrolmentNumber}.jpg`;
+
+          // ----------------------------------------------------
+          // FINAL PHOTO PATH
+          // ----------------------------------------------------
+
+          const finalPhotoPath = path.join(photoFolder, photoFileName);
+
+          // ----------------------------------------------------
+          // CONVERT PHOTO TO JPG
+          // ----------------------------------------------------
+
+          await sharp(photoFile.buffer)
+            .jpeg({
+              quality: 90,
+            })
+            .toFile(finalPhotoPath);
+        }
+
+        // ======================================================
+        // PROCESS SUPPORTING DOCUMENTS
+        // ======================================================
+
+        for (let i = 0; i < supportingFiles.length; i++) {
+          const file = supportingFiles[i];
+
+          const info = documentInfo[i];
+
+          const field = info.field;
+
+          // ====================================================
+          // VALIDATE FIELD
+          // ====================================================
+
+          if (!field) {
+            continue;
+          }
+
+          // ====================================================
+          // FILE EXTENSION
+          // ====================================================
+
+          const ext = path.extname(file.originalname).toLowerCase();
+
+          // ====================================================
+          // PHOTO SUPPORTING DOCUMENT
+          // ====================================================
+
+          if (field === "__PHOTO__") {
+            const folderPath = path.join(
+              "/media/acc_inc/B/SMS",
+              type,
+              "Documents",
+              enrolmentNumber,
+              "PhotoChange",
+            );
+
+            fs.mkdirSync(folderPath, {
+              recursive: true,
+            });
+
+            // --------------------------------------------------
+            // UNIQUE FILE NAME
+            // --------------------------------------------------
+
+            const fileName = `PhotoChange_${documentDate}_${timeStamp}_${i}${ext}`;
+
+            const finalPath = path.join(folderPath, fileName);
+
+            fs.writeFileSync(finalPath, file.buffer);
+
+            // --------------------------------------------------
+            // BROWSER PATH
+            // --------------------------------------------------
+
+            photoSupportingDocument = path
+              .join(
+                `/${type}`,
+                "Documents",
+                enrolmentNumber,
+                "PhotoChange",
+                fileName,
+              )
+              .replace(/\\/g, "/");
+
+            continue;
+          }
+
+          // ====================================================
+          // CANDIDATURE DOCUMENT
+          // ====================================================
+
+          if (field === "Candidature") {
+            const folderPath = path.join(
+              "/media/acc_inc/B/SMS",
+              type,
+              "Documents",
+              enrolmentNumber,
+              "Candidature",
+            );
+
+            fs.mkdirSync(folderPath, {
+              recursive: true,
+            });
+
+            // --------------------------------------------------
+            // UNIQUE FILE NAME
+            // --------------------------------------------------
+
+            const fileName = `Candidature_${documentDate}_${timeStamp}_${i}${ext}`;
+
+            const finalPath = path.join(folderPath, fileName);
+
+            fs.writeFileSync(finalPath, file.buffer);
+
+            // --------------------------------------------------
+            // BROWSER PATH
+            // --------------------------------------------------
+
+            candidatureDocument = path
+              .join(
+                `/${type}`,
+                "Documents",
+                enrolmentNumber,
+                "Candidature",
+                fileName,
+              )
+              .replace(/\\/g, "/");
+
+            continue;
+          }
+
+          // ====================================================
+          // NORMAL FIELD-WISE DOCUMENT
+          //
+          // Example:
+          // Name
+          // FatherName
+          // MotherName
+          // DOB
+          // etc.
+          // ====================================================
+
+          const folderName = field.replace(/[^a-zA-Z0-9_-]/g, "_");
+
+          const folderPath = path.join(
+            "/media/acc_inc/B/SMS",
+            type,
+            "Documents",
+            enrolmentNumber,
+            folderName,
+          );
+
+          fs.mkdirSync(folderPath, {
+            recursive: true,
+          });
+
+          // ----------------------------------------------------
+          // UNIQUE FILE NAME
+          // ----------------------------------------------------
+
+          const fileName = `${folderName}_${documentDate}_${timeStamp}_${i}${ext}`;
+
+          const finalPath = path.join(folderPath, fileName);
+
+          fs.writeFileSync(finalPath, file.buffer);
+
+          // ----------------------------------------------------
+          // BROWSER PATH
+          // ----------------------------------------------------
+
+          const browserPath = path
+            .join(
+              `/${type}`,
+              "Documents",
+              enrolmentNumber,
+              folderName,
+              fileName,
+            )
+            .replace(/\\/g, "/");
+
+          // ====================================================
+          // APPEND NEW DOCUMENT
+          // ====================================================
+
+          inheritedDocuments.push({
+            field: field,
+
+            fileName: file.originalname,
+
+            path: browserPath,
+
+            Date: createdDate,
+          });
+        }
+
+        // ======================================================
+        // UPDATE PHOTO SUPPORTING DOCUMENT
+        // ======================================================
+
+        if (photoSupportingDocument) {
+          newCandidate.PhotoSupportingDocument = photoSupportingDocument;
+        }
+
+        // ======================================================
+        // UPDATE CANDIDATURE DOCUMENT
+        // ======================================================
+
+        if (candidatureDocument) {
+          newCandidate.CandidatureDocument = candidatureDocument;
+        }
+
+        // ======================================================
+        // PRESERVE + APPEND SUPPORTING DOCUMENTS
+        // ======================================================
+
+        if (inheritedDocuments.length > 0) {
+          newCandidate.SupportingDocuments = inheritedDocuments;
+        }
+
+        // ======================================================
+        // NEW PROFILE MUST BE ACTIVE
+        // ======================================================
+
+        newCandidate.PDF = "PDF";
+
+        // ======================================================
+        // NEW MODIFICATION DATE
+        //
+        // DateofCreation remains preserved from old record.
+        // ======================================================
+
+        newCandidate.DateOfModification = createdDate;
+
+        // ======================================================
+        // OLD PROFILE
+        //
+        // IMPORTANT:
+        // Old record is NOT deleted.
+        // Only PDF changes from PDF -> ---
+        // ======================================================
+
+        // await collection.updateOne(
+        //   {
+        //     _id: oldCandidate._id,
+        //     PDF: "PDF",
+        //   },
+        //   {
+        //     $set: {
+        //       PDF: "---",
+        //     },
+        //   },
+        // );
+
+        // ======================================================
+        // INSERT NEW PROFILE
+        //
+        // New _id will automatically be generated by MongoDB.
+        // ======================================================
+
+        // await collection.insertOne(newCandidate);
+
+        // ======================================================
+        // SUCCESS
+        // ======================================================
+
+        return res.send({
+          status: "success",
+
+          message:
+            "Profile, photo and supporting documents updated successfully.",
+        });
       } finally {
+        // ======================================================
+        // CLOSE MONGODB CONNECTION
+        // ======================================================
+
         await client.close();
       }
-
-      // ========================================================
-      // SUCCESS
-      // ========================================================
-
-      res.send({
-        status: "success",
-
-        message: "Profile Updated Successfully",
-      });
     } catch (error) {
-      console.error("updateProfile error:", error);
+      // ========================================================
+      // ERROR
+      // ========================================================
 
-      res.status(500).send({
+      console.error("updateProfileAndDocuments error:", error);
+
+      return res.status(500).send({
         status: "failed",
 
         message: error.message || "Internal Server Error",
       });
     }
   };
+
+  // ============================================================
+  // Attendance Sheet API
+  // ============================================================
 
   static getAttendanceNep = async (req, res) => {
     const myobj = req.body;

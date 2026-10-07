@@ -21,12 +21,13 @@ router.use('/makeResult', checkUserAuth)
 router.use('/modifyMarks', checkUserAuth)
 router.use('/subjectModify', checkUserAuth)
 router.use('/getProfile', checkUserAuth)
-router.use('/updateProfile', checkUserAuth)
+// router.use('/updateProfile', checkUserAuth)
 router.use('/getAttendanceNep', checkUserAuth)
 router.use('/getNepUnits', checkUserAuth)
 router.use('/marksheetNEP', checkUserAuth)
 router.use('/registeredStudentNep', checkUserAuth)
 router.use(`/saveProfileAndDocumentsCBCS/:type`, checkUserAuth)
+router.use('/updateProfileAndDocuments', checkUserAuth)
 
 
 
@@ -63,22 +64,59 @@ router.post('/modifyMarks', userController.ModifyNepMarks)
 router.use('/subjectModify', userController.SubjectModify)
 router.post('/getProfile', userController.getProfile)
 // router.post('/updateProfile', upload.fields([{ name: 'Candidature', maxCount: 1 }]), userController.updateProfile)
-router.post('/updateProfile', upload.fields([
+// router.post('/updateProfile', upload.fields([
 
-    // Candidature Status Document
-    { name: 'Candidature', maxCount: 1 },
+//     // Candidature Status Document
+//     { name: 'Candidature', maxCount: 1 },
 
-    // Student Photo
-    { name: 'photo', maxCount: 1 },
+//     // Student Photo
+//     { name: 'photo', maxCount: 1 },
 
-    // Photo Change Supporting Document
-    { name: 'PhotoSupportingDocument', maxCount: 1 }
+//     // Photo Change Supporting Document
+//     { name: 'PhotoSupportingDocument', maxCount: 1 }
 
+//   ]),
+
+//   userController.updateProfile
+
+// );
+
+
+router.post(
+  "/updateProfileAndDocuments/:type",
+
+  upload.fields([
+    // =====================================================
+    // NEW PHOTO
+    // =====================================================
+
+    {
+      name: "photo",
+      maxCount: 1,
+    },
+
+    // =====================================================
+    // ALL FIELD-WISE SUPPORTING DOCUMENTS
+    //
+    // Name
+    // FatherName
+    // MotherName
+    // Candidature
+    // __PHOTO__
+    // etc.
+    // =====================================================
+
+    {
+      name: "supportingDocuments",
+      maxCount: 50,
+    },
   ]),
 
-  userController.updateProfile
-
+  userController.updateProfileAndDocuments,
 );
+
+
+
 router.post('/getAttendanceNep', userController.getAttendanceNep)
 router.post('/getNepUnits', userController.getNEPUnits) 
 router.post('/marksheetNEP', userController.getNepMarksheet)
