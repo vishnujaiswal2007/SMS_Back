@@ -6613,6 +6613,46 @@ class userController {
       });
     }
   };
+
+  static getDisciplineDetails = async (req, res) => {
+    const  discipline = req.body.subject;
+    const semester = req.body.SEM.sem;
+
+    const client = new MongoClient(URL);
+    
+    try {
+      await client.connect(); 
+      const db = client.db("NEP");
+      const collection = db.collection("DiciplineDetails");
+      const disciplineDetails = await collection.findOne({
+        DISCIPLINE: discipline,
+        Semester: semester,
+      });
+
+      if (!disciplineDetails) {
+        return res.status(200).json({
+          status: "error",
+          message: "Discipline details not found",
+        });
+      }
+      
+      return res.status(200).json({
+        status: "success",
+        message: "Discipline details fetched successfully",
+        data: disciplineDetails,
+      });
+    } catch (error) {
+      console.error("getDisciplineDetails Error:", error);
+      return res.status(200).json({
+        status: "error",
+        message: "Something went wrong while fetching discipline details",
+      });
+    } finally {
+      await client.close();
+    }
+  }
+
+
 }
 
 export default userController;

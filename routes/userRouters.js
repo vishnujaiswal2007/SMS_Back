@@ -45,7 +45,7 @@ router.post('/desig',userController.getDesig)
 router.get(`/getUnit`, userController.getUnit)
 router.post(`/getPapers`, userController.getPapers)
 router.post(`/getDiscipline`, userController.getDiscipline)
-router.post(`/getAllDiscipline`, userController.getAllDescipline)
+router.post(`/getDisciplineDetails`, userController.getDisciplineDetails)
 router.post('/makeTranscript', userController.makeTranscript)
 router.post('/getCbcsPgProfile/:type', userController.getCbscPgProfile)
 
